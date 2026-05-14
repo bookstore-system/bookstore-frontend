@@ -5,6 +5,7 @@ declare global {
     google?: typeof google
   }
 
+  
   namespace google {
     namespace accounts {
       namespace id {
