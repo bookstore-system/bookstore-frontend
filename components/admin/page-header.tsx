@@ -7,6 +7,12 @@ interface PageHeaderProps {
   title: string
   description: string
   onAddNew?: () => void
+  /** Nút phụ (ví dụ: Thêm thể loại) — hiển thị bên cạnh "Thêm mới" */
+  secondaryAction?: {
+    label: string
+    onClick: () => void
+    variant?: "default" | "outline"
+  }
   onSaveFilters?: () => void
   className?: string
 }
@@ -15,6 +21,7 @@ export function PageHeader({
   title, 
   description, 
   onAddNew, 
+  secondaryAction,
   onSaveFilters, 
   className 
 }: PageHeaderProps) {
@@ -36,6 +43,17 @@ export function PageHeader({
             <Filter className="w-4 h-4" />
             <span className="hidden sm:inline">Lưu bộ lọc</span>
             <span className="inline sm:hidden">Lưu</span>
+          </Button>
+        )}
+        {secondaryAction && (
+          <Button
+            type="button"
+            variant={secondaryAction.variant ?? "outline"}
+            className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
+            onClick={secondaryAction.onClick}
+          >
+            <Plus className="w-4 h-4" />
+            {secondaryAction.label}
           </Button>
         )}
         {onAddNew && (

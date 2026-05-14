@@ -21,6 +21,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
+import { QuickCategoryDialog } from "@/components/admin/quick-category-dialog"
 
 export default function AdminBooksPage() {
   const {
@@ -32,9 +34,11 @@ export default function AdminBooksPage() {
   } = useAdminBooks()
 
   const router = useRouter()
+  const { toast } = useToast()
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<string | null>(null)
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
 
   // -- Handlers --
 
@@ -68,8 +72,12 @@ export default function AdminBooksPage() {
         <PageHeader
           title="Quản lý sách"
           description="Quản lý tồn kho, cập nhật thông tin sách và theo dõi hiệu suất bán hàng."
+          secondaryAction={{
+            label: "Thêm thể loại",
+            onClick: () => setCategoryDialogOpen(true),
+            variant: "outline",
+          }}
           onAddNew={handleAddNewBook}
-        // Remove onSaveFilters if not used or implement specific logic
         />
 
         {/* 
@@ -140,6 +148,17 @@ export default function AdminBooksPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <QuickCategoryDialog
+          open={categoryDialogOpen}
+          onOpenChange={setCategoryDialogOpen}
+          onSuccess={(cat) => {
+            toast({
+              title: "Đã thêm thể loại",
+              description: `"${cat.name}" đã có trong hệ thống. Chọn thể loại này khi thêm hoặc sửa sách.`,
+            })
+          }}
+        />
 
       </div>
     </div>

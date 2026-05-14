@@ -129,9 +129,14 @@ class ApiClient {
 
       const data = await response.json();
 
-      // Unwrap Spring Boot response: {code, message, result}
-      if (data && typeof data === "object" && "result" in data) {
-        return data.result as T;
+      // Unwrap Spring-style envelopes: { code, message, result } or { code, message, data }
+      if (data && typeof data === "object") {
+        if ("result" in data) {
+          return (data as { result: T }).result as T;
+        }
+        if ("data" in data && "code" in data) {
+          return (data as { data: T }).data as T;
+        }
       }
 
       return data;

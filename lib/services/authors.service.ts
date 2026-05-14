@@ -27,17 +27,20 @@ export const authorsService = {
      * Get all authors with pagination and filters
      * Endpoint: GET /api/authors
      */
-    async getAuthors(params?: AuthorFilterRequest): Promise<PaginatedResponse<Author>> {
-        return apiClient.get<PaginatedResponse<Author>>("/authors", params);
+    async getAuthors(params?: AuthorFilterRequest): Promise<PaginatedResponse<Author> | Author[]> {
+        return apiClient.get<PaginatedResponse<Author> | Author[]>("/authors", params);
     },
 
     /**
-     * Get all authors (helper for dropdowns, fetches a large page)
+     * Get all authors (helper for dropdowns).
+     * Hỗ trợ cả book-service (GET trả về mảng) và API dạng Spring page ({ content }).
      */
     async getAllAuthorsForSelect(): Promise<Author[]> {
-        const res = await this.getAuthors({ page: 0, size: 100 });
-        return res.content; // Assuming typical Spring page structure has 'content'
-        // Note: Generic PaginatedResponse in api-client defines 'content: T[]'
+        const res = await this.getAuthors({ page: 0, size: 500 });
+        if (Array.isArray(res)) {
+            return res as Author[];
+        }
+        return res.content ?? [];
     },
 
     /**
