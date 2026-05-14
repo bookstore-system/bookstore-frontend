@@ -49,7 +49,7 @@ Trong đó `origin` là host backend (đã bỏ suffix `/api` hoặc `/api/v1`).
 | Method | Path | Ghi chú |
 |--------|------|---------|
 | GET | `/users/me` | |
-| PUT | `/user/profile` | `fetch` + FormData |
+| PUT | `/users/profile` | `fetch` + FormData |
 | POST | `/users/change-password` | |
 | PATCH | `/users/{id}/role` | |
 | GET | `/users/stats` | |
