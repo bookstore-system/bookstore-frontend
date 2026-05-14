@@ -24,11 +24,12 @@ import {
     SelectValue
 } from "@/components/ui/select"
 import { AdminBookDetail, BookStatus, AdminCreateBookRequest } from "@/lib/services/admin-books.service"
-import { categoriesService } from "@/lib/services/categories.service"
+import { bookCategoriesService } from "@/lib/services/book-categories.service"
 import { authorsService } from "@/lib/services/authors.service"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { useRouter } from "next/navigation"
 import { QuickAuthorDialog } from "./quick-author-dialog"
+import { QuickCategoryDialog } from "./quick-category-dialog"
 import { Plus } from "lucide-react"
 
 // Schema
@@ -71,6 +72,7 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
     const [selectedImages, setSelectedImages] = useState<File[]>([])
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [quickAuthorOpen, setQuickAuthorOpen] = useState(false)
+    const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
 
     const form = useForm<BookFormValues>({
         resolver: zodResolver(bookFormSchema),
@@ -94,11 +96,11 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
         const loadData = async () => {
             try {
                 const [cats, auths] = await Promise.all([
-                    categoriesService.getCategories(),
+                    bookCategoriesService.list(),
                     authorsService.getAllAuthorsForSelect()
                 ])
 
-                setCategories(cats.map((c: any) => ({
+                setCategories(cats.map((c) => ({
                     id: c.id,
                     name: c.name
                 })))
@@ -184,6 +186,15 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
         // Auto-select the new author
         const currentAuthors = form.getValues("authorIds") || []
         form.setValue("authorIds", [...currentAuthors, newAuthor.id])
+    }
+
+    const handleQuickCategorySuccess = (newCategory: { id: string; name: string }) => {
+        setCategories((prev) =>
+            [...prev.filter((c) => c.id !== newCategory.id), newCategory].sort((a, b) =>
+                a.name.localeCompare(b.name, "vi")
+            )
+        )
+        form.setValue("categoryIds", [newCategory.id])
     }
 
     const handleCancel = () => {
@@ -288,23 +299,34 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
                         render={({ field }) => (
                             <FormItem className="col-span-2 md:col-span-1">
                                 <FormLabel>Thể loại <span className="text-red-500">*</span></FormLabel>
-                                <Select
-                                    onValueChange={(value) => field.onChange([value])} // Temporary single select
-                                    defaultValue={field.value?.[0]}
-                                >
+                                <div className="flex gap-2">
                                     <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Chọn thể loại" />
-                                        </SelectTrigger>
+                                        <Select
+                                            onValueChange={(value) => field.onChange([value])}
+                                            value={field.value?.[0]}
+                                        >
+                                            <SelectTrigger className="flex-1 min-w-0">
+                                                <SelectValue placeholder="Chọn thể loại" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {categories.map((c) => (
+                                                    <SelectItem key={c.id} value={c.id}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </FormControl>
-                                    <SelectContent>
-                                        {categories.map((c) => (
-                                            <SelectItem key={c.id} value={c.id}>
-                                                {c.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => setQuickCategoryOpen(true)}
+                                        title="Thêm nhanh thể loại"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
                                 <FormDescription>Chọn thể loại chính của sách</FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -433,6 +455,11 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
                 open={quickAuthorOpen}
                 onOpenChange={setQuickAuthorOpen}
                 onSuccess={handleQuickAuthorSuccess}
+            />
+            <QuickCategoryDialog
+                open={quickCategoryOpen}
+                onOpenChange={setQuickCategoryOpen}
+                onSuccess={handleQuickCategorySuccess}
             />
         </Form>
     )
