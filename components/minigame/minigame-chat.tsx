@@ -42,6 +42,10 @@ interface Voucher {
   date: string
 }
 
+function isAdminUser(role?: string | null) {
+  return typeof role === "string" && role.toUpperCase() === "ADMIN"
+}
+
 export function MiniGameChat() {
   const { user, isAuthenticated } = useAuth()
   const router = useRouter()
@@ -56,11 +60,6 @@ export function MiniGameChat() {
 
   const localKey = user ? `minigame_spins_${user.id}` : null
   const firstLoginKey = user ? `minigame_seen_${user.id}` : null
-
-  // Luôn mở modal khi load trang (F5)
-  useEffect(() => {
-    setIsOpen(true)
-  }, [])
 
   useEffect(() => {
     const loadPromotions = async () => {
@@ -196,6 +195,10 @@ export function MiniGameChat() {
   const handleCloseModal = () => {
     setShowModal(false)
     setCurrentPrize(null)
+  }
+
+  if (isAdminUser(user?.role)) {
+    return null
   }
 
   return (
