@@ -24,6 +24,11 @@ import {
 import { cn, cleanMarkdown } from "@/lib/utils";
 import Image from "next/image";
 import { chatService, type AttachmentRequest as ChatAttachmentRequest } from "@/lib/services/chat.service";
+import { useAuth } from "@/lib/auth-context";
+
+function isAdminUser(role?: string | null) {
+  return typeof role === "string" && role.toUpperCase() === "ADMIN";
+}
 
 interface Attachment {
   id: string;
@@ -55,6 +60,7 @@ const STORE_INFO = {
 };
 
 export function ChatbotFloatingButton() {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -312,6 +318,9 @@ export function ChatbotFloatingButton() {
     }
   }, [loading, sessionId]);
 
+  if (isAdminUser(user?.role)) {
+    return null;
+  }
 
   return (
     <>
