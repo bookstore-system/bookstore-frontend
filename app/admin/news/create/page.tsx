@@ -102,7 +102,7 @@ export default function CreateNewsPage() {
           description: "Vui lòng đăng nhập lại",
           variant: "destructive",
         })
-        router.push('/login?redirect=/admin/news/create')
+        router.push('/admin/login?redirect=/admin/news/create')
         return
       }
 

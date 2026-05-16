@@ -23,12 +23,10 @@ export default function PromotionsPage() {
     statusOptions,
     stats,
     isLoading,
-    error,
     filterActions,
     sortActions,
     paginationActions,
     promotionActions,
-    refreshPromotions
   } = usePromotionFilters()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -96,22 +94,6 @@ export default function PromotionsPage() {
 
   const handleAdvancedFilter = () => {
     toast.info("Chức năng lọc nâng cao đang phát triển")
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-muted/40 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive mb-4">{error}</p>
-          <button
-            onClick={refreshPromotions}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-          >
-            Thử lại
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (
