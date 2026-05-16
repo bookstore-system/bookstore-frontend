@@ -170,11 +170,17 @@ export default function ProductDetailPage() {
   }
 
   const calculateShipping = async (address: Address) => {
+    if (!book) return
     try {
       setShippingLoading(true)
+      const unitPrice = book.discountPrice ?? book.price
       const response = await shipmentService.calculateShippingFee(
         address.districtId,
-        address.wardCode
+        address.wardCode,
+        {
+          totalItems: quantity,
+          subtotal: unitPrice * quantity,
+        }
       )
       setShippingInfo(response)
     } catch (error) {
@@ -185,14 +191,14 @@ export default function ProductDetailPage() {
     }
   }
 
-  // Calculate shipping when address changes
+  // Calculate shipping when address, book, or quantity changes
   useEffect(() => {
-    if (userAddress) {
+    if (userAddress && book) {
       calculateShipping(userAddress)
     } else {
       setShippingInfo(null)
     }
-  }, [userAddress])
+  }, [userAddress, book, quantity])
 
   const formatDeliveryDate = (dateString: string) => {
     const date = new Date(dateString)
