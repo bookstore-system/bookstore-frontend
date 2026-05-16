@@ -18,6 +18,7 @@ import { categoriesService, Category } from "@/lib/services/categories.service"
 import { message } from "antd"
 import useEmblaCarousel from 'embla-carousel-react'
 import Autoplay from 'embla-carousel-autoplay'
+import { HeroBooksPlaceholder } from "@/components/home/hero-books-placeholder"
 
 // Component to handle search params callback (needs Suspense boundary)
 function AuthCallbackHandler() {
@@ -220,13 +221,32 @@ function AuthCallbackHandler() {
   return null
 }
 
+function isAdminRole(role?: string | null) {
+  return typeof role === "string" && role.toUpperCase() === "ADMIN"
+}
+
 // Main content component
 function HomeContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, isLoading: isAuthLoading } = useAuth()
   const [bestSellingBooks, setBestSellingBooks] = useState<Book[]>([])
   const [suggestedBooks, setSuggestedBooks] = useState<Book[]>([])
   const [popularCategoriesWithBooks, setPopularCategoriesWithBooks] = useState<CategoryWithBooks[]>([])
   const [literatureBooks, setLiteratureBooks] = useState<Book[]>([])
-  
+
+  const isAuthCallback =
+    searchParams.has("token") ||
+    searchParams.has("refreshToken") ||
+    searchParams.has("error")
+
+  useEffect(() => {
+    if (isAuthLoading || isAuthCallback) return
+    if (isAdminRole(user?.role)) {
+      router.replace("/admin")
+    }
+  }, [isAuthLoading, isAuthCallback, router, user])
+
   // Embla Carousel for hero section
   const [emblaRef] = useEmblaCarousel(
     { loop: true },
@@ -252,6 +272,10 @@ function HomeContent() {
     }
     fetchBooks()
   }, [])
+
+  if (!isAuthLoading && !isAuthCallback && isAdminRole(user?.role)) {
+    return null
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -314,10 +338,7 @@ function HomeContent() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center">
-                      <span className="text-5xl sm:text-6xl">📚</span>
-                      <p className="mt-4 text-sm text-muted-foreground sm:text-base">Khám phá sản phẩm nổi bật</p>
-                    </div>
+                    <HeroBooksPlaceholder />
                   )}
                 </div>
               </div>

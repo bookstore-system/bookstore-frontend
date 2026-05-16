@@ -12,12 +12,11 @@ import { TopViewedNewsChart } from "@/components/admin/top-viewed-news-chart"
 import { ViewsTrendChart } from "@/components/admin/views-trend-chart"
 import { FeaturedNewsList } from "@/components/admin/featured-news-list"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Newspaper, RefreshCw, Plus, FileDown, List } from "lucide-react"
+import { Newspaper, RefreshCw, List } from "lucide-react"
 import Link from "next/link"
 
 export default function NewsManagementPage() {
-  const { stats, isLoading, error, refreshStats } = useNewsManagement()
+  const { stats, isLoading, refreshStats } = useNewsManagement()
 
   if (isLoading) {
     return (
@@ -30,25 +29,6 @@ export default function NewsManagementPage() {
               <p className="text-muted-foreground">Đang tải dữ liệu...</p>
             </div>
           </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-muted/40">
-        <div className="space-y-6 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-          {/* Error state */}
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={refreshStats} variant="outline">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Thử lại
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
     )

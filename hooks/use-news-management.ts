@@ -5,18 +5,34 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { newsService, NewsStatsResponse } from '@/lib/services/news.service'
-import { toast } from 'sonner'
+
+const EMPTY_NEWS_STATS: NewsStatsResponse = {
+  totalNews: 0,
+  publishedNews: 0,
+  draftNews: 0,
+  archivedNews: 0,
+  featuredNews: 0,
+  newNewsThisMonth: 0,
+  newNewsThisWeek: 0,
+  newNewsToday: 0,
+  totalViews: 0,
+  avgViewsPerNews: 0,
+  totalComments: 0,
+  newsByCategory: [],
+  topViewedNews: [],
+  viewsTrend: [],
+  newsGrowthPercentage: 0,
+  viewsGrowthPercentage: 0,
+}
 
 export function useNewsManagement() {
   const [stats, setStats] = useState<NewsStatsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
     try {
       setIsLoading(true)
-      setError(null)
 
       const response = await newsService.getStatistics()
 
@@ -30,9 +46,9 @@ export function useNewsManagement() {
       } else {
         setStats(response)
       }
-    } catch (err: any) {
-      setError(err.message || 'Không thể tải thống kê tin tức')
-      toast.error('Không thể tải thống kê tin tức')
+    } catch (err) {
+      console.error('Failed to load news statistics:', err)
+      setStats(EMPTY_NEWS_STATS)
     } finally {
       setIsLoading(false)
     }
@@ -47,7 +63,6 @@ export function useNewsManagement() {
     // State
     stats,
     isLoading,
-    error,
 
     // Actions
     refreshStats: fetchStatistics,

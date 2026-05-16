@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Send,
   Bot,
@@ -39,6 +40,7 @@ interface ReportPeriod {
 }
 
 export function RevenueChatbot() {
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -57,6 +59,10 @@ export function RevenueChatbot() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { summaryCards, revenueByMonth } = useRevenueData();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Auto scroll to bottom when new message is added
   useEffect(() => {
@@ -622,7 +628,11 @@ Hãy tạo báo cáo chi tiết, dễ hiểu và có cấu trúc rõ ràng.`;
     }
   };
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <>
       {/* Floating Button */}
       <button
@@ -640,8 +650,7 @@ Hãy tạo báo cáo chi tiết, dễ hiểu và có cấu trúc rõ ràng.`;
           "active:scale-95",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           "animate-in fade-in-0 zoom-in-95",
-          "sm:bottom-8 sm:right-8",
-          "relative"
+          "sm:bottom-8 sm:right-8"
         )}
         aria-label="Mở AI trợ lý báo cáo"
       >
@@ -651,12 +660,13 @@ Hãy tạo báo cáo chi tiết, dễ hiểu và có cấu trúc rõ ràng.`;
             AI
           </span>
         )}
-        {/* Proactive suggestion notification badge */}
         {hasProactiveSuggestion && !isOpen && (
-          <div className="absolute -top-2 -left-2 flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-semibold text-white shadow-lg animate-bounce">
-            <span className="h-2 w-2 rounded-full bg-white animate-pulse"></span>
-            Gợi ý mới
-          </div>
+          <span
+            className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-background"
+            title="Gợi ý mới"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+          </span>
         )}
       </button>
 
@@ -675,7 +685,6 @@ Hãy tạo báo cáo chi tiết, dễ hiểu và có cấu trúc rõ ràng.`;
             "flex max-h-[calc(100vh-8rem)] h-[500px] max-w-md flex-col p-0",
             "sm:h-[550px] sm:max-w-lg sm:max-h-[calc(100vh-10rem)]",
             "md:h-[600px]",
-            // Position at bottom right corner
             "!top-auto !left-auto !bottom-24 !right-6",
             "!translate-x-0 !translate-y-0",
             "sm:!bottom-28 sm:!right-8",
@@ -853,6 +862,7 @@ Hãy tạo báo cáo chi tiết, dễ hiểu và có cấu trúc rõ ràng.`;
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </>,
+    document.body
   );
 }

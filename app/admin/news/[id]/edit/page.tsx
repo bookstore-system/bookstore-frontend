@@ -192,7 +192,7 @@ export default function EditNewsPage() {
                     description: "Vui lòng đăng nhập lại",
                     variant: "destructive",
                 })
-                router.push('/login?redirect=/admin/news/' + newsId + '/edit')
+                router.push('/admin/login?redirect=/admin/news/' + newsId + '/edit')
                 return
             }
 
