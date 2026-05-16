@@ -5,25 +5,39 @@ import { useEffect, useState, type ReactNode } from "react"
 import { Menu, X } from "lucide-react"
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { useAuth } from "@/lib/auth-context"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, logout, isLoading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const isLoginPage = pathname === "/admin/login"
 
   useEffect(() => {
-    if (isLoading) return
+    if (isLoading || isLoginPage) return
 
     if (!user) {
-      router.replace("/login")
+      router.replace("/admin/login")
       return
     }
 
     if (typeof user.role === "string" && user.role.toUpperCase() !== "ADMIN") {
       router.replace("/")
     }
-  }, [isLoading, router, user])
+  }, [isLoading, isLoginPage, router, user])
+
+  useEffect(() => {
+    if (isLoading || !isLoginPage) return
+
+    if (user && typeof user.role === "string" && user.role.toUpperCase() === "ADMIN") {
+      router.replace("/admin")
+    }
+  }, [isLoading, isLoginPage, router, user])
+
+  if (isLoginPage) {
+    return <>{children}</>
+  }
 
   if (isLoading || !user || (typeof user.role === "string" && user.role.toUpperCase() !== "ADMIN")) {
     return null
