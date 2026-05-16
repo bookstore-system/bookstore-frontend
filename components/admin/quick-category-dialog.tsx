@@ -23,20 +23,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { bookCategoriesService, BookCategoryOption } from "@/lib/services/book-categories.service"
 import { useToast } from "@/components/ui/use-toast"
 
 const categorySchema = z.object({
-  name: z.string().min(1, "Nhập tên thể loại"),
-  description: z.string().optional(),
-  parentCategoryId: z.string().optional(),
+  name: z.string().min(1, "Nhập tên thể loại").max(255, "Tối đa 255 ký tự"),
+  description: z.string().max(10000, "Mô tả quá dài").optional(),
 })
 
 type CategoryFormValues = z.infer<typeof categorySchema>
@@ -50,37 +42,18 @@ interface QuickCategoryDialogProps {
 export function QuickCategoryDialog({ open, onOpenChange, onSuccess }: QuickCategoryDialogProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [parents, setParents] = useState<BookCategoryOption[]>([])
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: "",
       description: "",
-      parentCategoryId: "",
     },
   })
 
   useEffect(() => {
-    if (!open) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const list = await bookCategoriesService.list()
-        if (!cancelled) setParents(list)
-      } catch (e) {
-        console.error(e)
-        if (!cancelled) setParents([])
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [open])
-
-  useEffect(() => {
     if (!open) {
-      form.reset({ name: "", description: "", parentCategoryId: "" })
+      form.reset({ name: "", description: "" })
     }
   }, [open, form])
 
@@ -90,7 +63,6 @@ export function QuickCategoryDialog({ open, onOpenChange, onSuccess }: QuickCate
       const created = await bookCategoriesService.create({
         name: values.name.trim(),
         description: values.description?.trim() || undefined,
-        parentCategoryId: values.parentCategoryId?.trim() || undefined,
       })
       toast({
         title: "Thành công",
@@ -117,7 +89,7 @@ export function QuickCategoryDialog({ open, onOpenChange, onSuccess }: QuickCate
         <DialogHeader>
           <DialogTitle>Thêm thể loại</DialogTitle>
           <DialogDescription>
-            Tên phải duy nhất. Có thể gắn thể loại cha
+            Tên phải duy nhất trong hệ thống
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -144,34 +116,6 @@ export function QuickCategoryDialog({ open, onOpenChange, onSuccess }: QuickCate
                   <FormControl>
                     <Textarea placeholder="Tùy chọn" rows={3} {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="parentCategoryId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Thể loại cha</FormLabel>
-                  <Select
-                    onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
-                    value={field.value || "__none__"}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full min-w-0">
-                        <SelectValue placeholder="Không có (gốc)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent position="popper" sideOffset={4}>
-                      <SelectItem value="__none__">Không có (gốc)</SelectItem>
-                      {parents.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

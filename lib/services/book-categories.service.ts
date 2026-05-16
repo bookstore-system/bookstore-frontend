@@ -1,6 +1,7 @@
 /**
- * Categories từ bookstore-book-service (/api/v1/categories).
- * Tách khỏi categories.service (BFF/monolith giả định nhiều endpoint hơn).
+ * Categories từ bookstore-book-service.
+ * - GET /api/v1/categories — danh sách (public)
+ * - POST /api/v1/admin/categories — tạo thể loại (admin)
  */
 
 import { apiClient } from "../api-client"
@@ -10,11 +11,10 @@ export interface BookCategoryOption {
   name: string
 }
 
-export interface CreateBookCategoryBody {
+/** Khớp AdminCreateCategoryRequest (book-service) */
+export interface AdminCreateCategoryBody {
   name: string
   description?: string
-  /** UUID thể loại cha; bỏ qua nếu là thể loại gốc */
-  parentCategoryId?: string
 }
 
 export const bookCategoriesService = {
@@ -22,7 +22,7 @@ export const bookCategoriesService = {
     return apiClient.get<BookCategoryOption[]>("/categories")
   },
 
-  async create(body: CreateBookCategoryBody): Promise<BookCategoryOption> {
-    return apiClient.post<BookCategoryOption>("/categories", body)
+  async create(body: AdminCreateCategoryBody): Promise<BookCategoryOption> {
+    return apiClient.post<BookCategoryOption>("/admin/categories", body)
   },
 }
