@@ -26,7 +26,6 @@ export function usePromotionFilters() {
   // Promotions state
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
     page: 0,
     pageSize: 10,
@@ -43,7 +42,6 @@ export function usePromotionFilters() {
   const loadPromotions = async (page: number = 0, size: number = 10) => {
     try {
       setIsLoading(true)
-      setError(null)
       const response = await promotionsService.getPromotions({
         page: page,
         size: size,
@@ -56,9 +54,14 @@ export function usePromotionFilters() {
         totalPages: response.totalPages,
       })
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Không thể tải danh sách khuyến mãi"
-      setError(errorMessage)
-      toast.error(errorMessage)
+      console.error("Failed to load promotions:", err)
+      setPromotions([])
+      setPagination({
+        page: 0,
+        pageSize: size,
+        totalItems: 0,
+        totalPages: 0,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -312,7 +315,6 @@ export function usePromotionFilters() {
     statusOptions,
     stats,
     isLoading,
-    error,
     pagination,
     filterActions: {
       setSearchTerm,
