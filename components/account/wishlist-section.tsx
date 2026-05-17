@@ -9,6 +9,11 @@ import { useRouter } from "next/navigation"
 
 const ITEMS_PER_PAGE = 6
 
+function formatVnd(value: number | null | undefined): string {
+  if (value == null) return "—"
+  return `${value.toLocaleString("vi-VN")}₫`
+}
+
 export function WishlistSection() {
   const [wishlistBooks, setWishlistBooks] = useState<WishlistBook[]>([])
   const [loading, setLoading] = useState(true)
@@ -166,11 +171,13 @@ export function WishlistSection() {
               {/* Price */}
               <div className="flex items-baseline gap-2">
                 <span className="text-lg font-bold text-primary">
-                  {book.price.toLocaleString("vi-VN")}₫
+                  {formatVnd(book.discountPrice ?? book.price)}
                 </span>
-                {book.discountPrice && book.discountPrice !== book.price && (
+                {book.price != null &&
+                  book.discountPrice != null &&
+                  book.discountPrice < book.price && (
                   <span className="text-sm text-muted-foreground line-through">
-                    {book.discountPrice.toLocaleString("vi-VN")}₫
+                    {formatVnd(book.price)}
                   </span>
                 )}
               </div>
