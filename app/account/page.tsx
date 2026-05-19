@@ -757,15 +757,6 @@ export default function AccountPage() {
                         className="w-5 h-5"
                       />
                     </div>
-                    <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">Nhận SMS</p>
-                        <p className="text-sm text-muted-foreground">
-                          Nhận thông báo qua SMS
-                        </p>
-                      </div>
-                      <input type="checkbox" className="w-5 h-5" />
-                    </div>
                     <Button className="mt-4">Lưu thay đổi</Button>
                   </div>
                 </div>
