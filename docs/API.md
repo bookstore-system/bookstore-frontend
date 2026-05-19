@@ -1,7 +1,6 @@
 # API dùng bởi Bookstore Frontend
 
 Tài liệu tổng hợp các endpoint mà FE gọi (theo `lib/services/*`, `lib/api-client.ts`, và các `fetch` trong `app/**`).
-
 ## Base URL
 
 - Biến môi trường: `NEXT_PUBLIC_API_URL`
