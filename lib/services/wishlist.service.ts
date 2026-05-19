@@ -8,8 +8,8 @@ import { apiClient } from "../api-client"
 export interface WishlistBook {
   id: string
   title: string
-  price: number
-  discountPrice: number
+  price: number | null
+  discountPrice: number | null
   mainImageUrl: string | null
   averageRating: number
   reviewCount: number
