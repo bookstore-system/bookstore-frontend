@@ -1,7 +1,14 @@
+import { OrderProvider } from "@/lib/order-context"
+import { Toaster } from "@/components/ui/toaster"
 import type React from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { CartProvider } from "@/lib/cart-context";
+import { AuthProvider } from "@/lib/auth-context";
+import { CartSidebar } from "@/components/cart/cart-sidebar";
+import { ChatbotFloatingButton } from "@/components/chatbot/chatbot-floating-button";
+import { MiniGameChat } from "@/components/minigame/minigame-chat";
 import "./globals.css";
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -41,7 +48,18 @@ export default function RootLayout({
         <script src="https://cdn.ckbox.io/ckbox/2.9.2/translations/vi.js" crossOrigin="anonymous"></script>
       </head>
       <body className={`font-sans antialiased`}>
-        {children}
+        <AuthProvider>
+          <OrderProvider>
+            <CartProvider>
+              {children}
+              <CartSidebar />
+              <ChatbotFloatingButton />
+              <MiniGameChat />
+              <Toaster />
+            </CartProvider>
+          </OrderProvider>
+        </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );

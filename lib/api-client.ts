@@ -3,12 +3,61 @@
  * Base configuration for making HTTP requests to the backend
  */
 
-// Get API URL from environment variables
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+// Strip /api or /api/v{n} from base URL for user-facing "server origin" hints
+function stripApiPathSuffix(baseURL: string): string {
+  try {
+    const u = new URL(baseURL)
+    const path = u.pathname.replace(/\/$/, "")
+    if (/\/api(?:\/v\d+)?$/i.test(path)) {
+      u.pathname = path.replace(/\/api(?:\/v\d+)?$/i, "") || "/"
+      u.search = ""
+      u.hash = ""
+      return u.toString().replace(/\/$/, "")
+    }
+  } catch {
+    /* fall through */
+  }
+  return baseURL.replace(/\/api(?:\/v\d+)?$/i, "")
+}
 
-// Log API URL in development to help debug
-if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+// Get API URL from environment variables and normalize it
+function normalizeApiUrl(url: string): string {
+  url = url.trim()
+
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    if (url.startsWith("//")) {
+      url = "http:" + url
+    } else {
+      url = "http://" + url
+    }
+  }
+
+  url = url.replace(/\/$/, "")
+
+  // Already includes API prefix (e.g. .../api or .../api/v1)
+  if (/\/api(\/v\d+)?$/i.test(url)) {
+    return url
+  }
+
+  return `${url}/api/v1`
+}
+
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"
+
+/** Resolved API base URL (includes `/api` or `/api/v1`, no trailing slash). */
+export const API_BASE_URL = normalizeApiUrl(rawApiUrl)
+
+/** Host (and port) without trailing `/api` or `/api/v{n}` — for OAuth redirects and hints. */
+export function backendOriginFromApiBaseUrl(baseUrl: string): string {
+  return stripApiPathSuffix(baseUrl)
+}
+
+// Log API URL to help debug (in both dev and production)
+if (typeof window !== "undefined") {
   console.log("API Base URL:", API_BASE_URL)
+  if (rawApiUrl !== API_BASE_URL) {
+    console.warn("API URL was normalized from:", rawApiUrl, "to:", API_BASE_URL)
+  }
 }
 
 export interface ApiResponse<T> {
@@ -80,22 +129,28 @@ class ApiClient {
 
       const data = await response.json();
 
-      // Unwrap Spring Boot response: {code, message, result}
-      if (data && typeof data === "object" && "result" in data) {
-        return data.result as T;
+      // Unwrap Spring-style envelopes: { code, message, result } or { code, message, data }
+      if (data && typeof data === "object") {
+        if ("result" in data) {
+          return (data as { result: T }).result as T;
+        }
+        if ("data" in data && "code" in data) {
+          return (data as { data: T }).data as T;
+        }
       }
 
       return data;
     } catch (error) {
       // Improved error handling for "Failed to fetch"
       if (error instanceof TypeError && error.message === "Failed to fetch") {
+        const serverOrigin = stripApiPathSuffix(this.baseURL)
         console.error("API Request Failed:", {
           url,
           baseURL: this.baseURL,
           endpoint,
           error: "Cannot connect to backend server",
           checks: [
-            `1. Is backend server running at ${this.baseURL.replace('/api', '')}?`,
+            `1. Is backend server running at ${serverOrigin}?`,
             "2. Check CORS configuration in backend",
             "3. Check network connectivity",
             "4. If using Railway, check if NEXT_PUBLIC_API_URL is set correctly in .env.local",
@@ -103,7 +158,7 @@ class ApiClient {
         })
         throw new Error(
           `Không thể kết nối đến server. Vui lòng kiểm tra:\n` +
-          `- Backend có đang chạy tại ${this.baseURL.replace('/api', '')} không?\n` +
+          `- Backend có đang chạy tại ${serverOrigin} không?\n` +
           `- Kiểm tra CORS configuration\n` +
           `- Kiểm tra file .env.local có NEXT_PUBLIC_API_URL đúng không\n` +
           `- Kiểm tra kết nối mạng`
@@ -199,5 +254,5 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL);
+export const apiClient = new ApiClient(API_BASE_URL)
 export default apiClient;

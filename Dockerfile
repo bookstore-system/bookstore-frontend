@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080/api
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NODE_ENV=production
 
@@ -25,7 +25,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080/api
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 COPY --from=builder /app/public ./public

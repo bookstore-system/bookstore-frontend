@@ -6,7 +6,7 @@
 import { apiClient } from "../api-client";
 
 export interface LoginRequest {
-  identifier: string
+  identifier: string; // email or username
   password: string;
 }
 
