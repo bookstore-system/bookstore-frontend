@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from "../api-client"
+import { booksService } from "./books.service"
 
 // Matches CartItemResponse from backend
 export interface CartItem {
@@ -55,13 +56,38 @@ export interface RemoveCartResponse {
   totalPrice: number
 }
 
+/** Bổ sung ảnh từ book-service khi cart-service chưa trả bookImageUrl (giỏ cũ / image chưa sync). */
+export async function enrichCartWithImages(cart: Cart): Promise<Cart> {
+  if (!cart.items?.length) {
+    return cart
+  }
+
+  const items = await Promise.all(
+    cart.items.map(async (item) => {
+      if (item.bookImageUrl?.trim()) {
+        return item
+      }
+      try {
+        const book = await booksService.getBookById(item.bookId)
+        const url = book.mainImageUrl || book.imageUrls?.[0]
+        return url ? { ...item, bookImageUrl: url } : item
+      } catch {
+        return item
+      }
+    })
+  )
+
+  return { ...cart, items }
+}
+
 export const cartService = {
   /**
    * Get current user's cart
    * GET /api/cart
    */
   async getCart(): Promise<Cart> {
-    return apiClient.get<Cart>("/cart")
+    const cart = await apiClient.get<Cart>("/cart")
+    return enrichCartWithImages(cart)
   },
 
   /**
@@ -69,7 +95,19 @@ export const cartService = {
    * POST /api/cart/add
    */
   async addToCart(data: AddToCartRequest): Promise<AddToCartResponse> {
-    return apiClient.post<AddToCartResponse>("/cart/add", data)
+    const response = await apiClient.post<AddToCartResponse>("/cart/add", data)
+    if (!response.cartItem.bookImageUrl?.trim()) {
+      try {
+        const book = await booksService.getBookById(response.cartItem.bookId)
+        const url = book.mainImageUrl || book.imageUrls?.[0]
+        if (url) {
+          response.cartItem.bookImageUrl = url
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return response
   },
 
   /**
