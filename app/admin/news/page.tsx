@@ -42,7 +42,8 @@ export default function NewsManagementPage() {
             {error || "Không thể tải thống kê tin tức"}
           </p>
           <p className="text-sm text-muted-foreground">
-            Đảm bảo đã đăng nhập admin và gateway đã rebuild sau khi sửa whitelist.
+            Khởi động <code className="text-xs">news-service</code> trước (Docker: đợi log
+            Started), sau đó bấm Thử lại. Cần đăng nhập admin và token trong localStorage.
           </p>
           <Button onClick={refreshStats}>Thử lại</Button>
         </div>

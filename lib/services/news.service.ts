@@ -92,10 +92,13 @@ export interface NewsListParams {
   size?: number
   sortBy?: string
   sortOrder?: string
+  sort?: string
+  order?: string
   keyword?: string
   category?: string
   status?: string
   tag?: string
+  featured?: boolean
 }
 
 export const newsService = {
@@ -103,10 +106,22 @@ export const newsService = {
     return apiClient.get<NewsStatsResponse>("/news/statistics")
   },
 
+  /** Admin: tìm kiếm nâng cao (mọi trạng thái). */
   async list(params: NewsListParams): Promise<Page<NewsItem>> {
     return apiClient.get<Page<NewsItem>>("/news/advanced-search", params)
   },
 
+  /** Admin: danh sách có lọc featured/status (GET /news). */
+  async listAdmin(params: NewsListParams): Promise<Page<NewsItem>> {
+    return apiClient.get<Page<NewsItem>>("/news", params)
+  },
+
+  /** Guest: chỉ tin PUBLISHED. */
+  async listPublished(params?: { page?: number; size?: number }): Promise<Page<NewsItem>> {
+    return apiClient.get<Page<NewsItem>>("/news/published", params)
+  },
+
+  /** Admin: mọi trạng thái. Guest không gọi qua apiClient (không token). */
   async getById(id: string): Promise<NewsItem> {
     return apiClient.get<NewsItem>(`/news/${id}`)
   },

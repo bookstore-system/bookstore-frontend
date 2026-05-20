@@ -37,6 +37,8 @@ import {
   Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { fetchPublishedNewsPage } from "@/lib/public-news-api"
+import { NEWS_CATEGORIES } from "@/lib/news-categories"
 
 // Interface cho News
 interface NewsItem {
@@ -68,28 +70,19 @@ interface NewsPageResponse {
   size: number
 }
 
-// Popular tags để gợi ý
-const POPULAR_TAGS = [
-  "Sách mới",
-  "Khuyến mãi",
-  "Review sách",
-  "Tác giả",
-  "Văn học",
-  "Kinh tế",
-  "Kỹ năng sống",
-  "Thiếu nhi",
-]
-
-// Categories cho filter - Đồng bộ với admin
+// Đồng bộ danh mục với admin (lib/news-categories.ts)
 const CATEGORIES = [
   { value: "ALL", label: "Tất cả danh mục" },
-  { value: "Sách mới", label: "Sách mới" },
-  { value: "Tác giả", label: "Tác giả" },
-  { value: "Sự kiện", label: "Sự kiện" },
-  { value: "Khuyến mãi", label: "Khuyến mãi" },
-  { value: "Review", label: "Review" },
-  { value: "Hướng dẫn", label: "Hướng dẫn" },
-  { value: "Tin tức", label: "Tin tức" },
+  ...NEWS_CATEGORIES.map((c) => ({ value: c.value, label: c.label })),
+]
+
+const POPULAR_TAGS = [
+  "Lập trình",
+  "Unity",
+  "Khuyến mãi",
+  "Văn học",
+  "Sách kinh tế",
+  "Thiếu nhi",
 ]
 
 // Sort field options - Đồng bộ với admin
@@ -311,56 +304,31 @@ export default function NewsPage() {
     const fetchNews = async () => {
       setIsLoading(true)
       try {
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+        const tagQuery = tagFilter.trim() || (selectedTags.length === 1 ? selectedTags[0] : undefined)
 
-        // Build query params for advanced-search endpoint - matching admin
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          size: pageSize.toString(),
+        const pageResult = await fetchPublishedNewsPage({
+          page: currentPage,
+          size: pageSize,
+          keyword: searchQuery.trim() || undefined,
+          category: selectedCategory !== "ALL" ? selectedCategory : undefined,
+          tag: tagQuery,
           sortBy: sortField,
           sortOrder: sortOrder,
-          status: "PUBLISHED", // Only show published news for public
         })
 
-        // Add keyword filter if searching
-        if (searchQuery.trim()) {
-          params.append("keyword", searchQuery.trim())
-        }
-
-        // Add category filter if selected
-        if (selectedCategory && selectedCategory !== "ALL") {
-          params.append("category", selectedCategory)
-        }
-
-        // Add tag filter from text input (like admin)
-        if (tagFilter.trim()) {
-          params.append("tag", tagFilter.trim())
-        } else if (selectedTags.length > 0) {
-          // Fallback to selected tags from buttons
-          params.append("tag", selectedTags[0])
-        }
-
-        // Use advanced-search endpoint for full filtering support
-        const url = `${API_BASE_URL}/news/advanced-search`
-        console.log("Fetching news with params:", params.toString()) // Debug log
-        const response = await fetch(`${url}?${params.toString()}`)
-        const data = await response.json()
-
-        if (data.result) {
-          let newsData = data.result.content || []
-
-          // If multiple tags selected, filter remaining tags on client side
-          if (selectedTags.length > 1 && !tagFilter.trim()) {
-            newsData = newsData.filter((item: NewsItem) =>
-              selectedTags.slice(1).every(tag =>
-                item.tags?.some(t => t.toLowerCase().includes(tag.toLowerCase()))
-              )
-            )
-          }
+        if (pageResult) {
+          const newsData = (pageResult.content || []).map((item) => ({
+            ...item,
+            newsID: String(item.newsID ?? (item as { id?: string }).id ?? ""),
+          }))
 
           setNews(newsData)
-          setTotalPages(data.result.totalPages || 1)
-          setTotalElements(data.result.totalElements || newsData.length)
+          setTotalPages(pageResult.totalPages || 1)
+          setTotalElements(pageResult.totalElements ?? newsData.length)
+        } else {
+          setNews([])
+          setTotalPages(0)
+          setTotalElements(0)
         }
       } catch (error) {
         console.error("Error fetching news:", error)
@@ -384,11 +352,10 @@ export default function NewsPage() {
     setCurrentPage(0)
   }
 
-  // Handle tag toggle
+  // Một tag tại một thời điểm (tránh chỉ gửi phần tử đầu khi chọn nhiều chip)
   const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    )
+    setSelectedTags((prev) => (prev.includes(tag) ? [] : [tag]))
+    setTagFilter("")
     setCurrentPage(0)
   }
 
