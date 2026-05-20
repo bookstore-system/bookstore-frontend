@@ -16,10 +16,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { ArrowLeft, Save, Eye, X, FileText, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { newsService } from "@/lib/services/news.service"
+import { NEWS_CATEGORIES } from "@/lib/news-categories"
 import "../../create/ckeditor-styles.css"
 
 // Dynamically import CKEditor component to avoid SSR issues
-const CKEditorComponent = dynamic(() => import("../../create/ckeditor-component"), {
+const CKEditorComponent = dynamic(() => import("@/components/news/news-ckeditor"), {
     ssr: false,
     loading: () => (
         <div className="min-h-[400px] flex items-center justify-center border rounded-lg bg-muted/20">
@@ -104,36 +106,30 @@ export default function EditNewsPage() {
     const fetchNewsDetail = async () => {
         setIsLoadingNews(true)
         try {
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-            const response = await fetch(`${API_BASE_URL}/news/${newsId}`)
-            const data = await response.json()
+            const news = await newsService.getById(newsId)
+            const mapped = {
+                ...news,
+                newsID: String(news.newsID ?? newsId),
+                tags: news.tags ?? [],
+            } as NewsDetail
 
-            if (data.result) {
-                const news = data.result
-                setOriginalNews(news)
-                setTitle(news.title || "")
-                setSummary(news.summary || "")
-                setContent(news.content || "")
-                setCategory(news.category || "")
-                setTags(news.tags || [])
-                setFeatured(news.featured || false)
-                setStatus(news.status || "DRAFT")
-                setCoverImage(news.coverImage || "")
-            } else {
-                toast({
-                    title: "Lỗi",
-                    description: "Không tìm thấy tin tức",
-                    variant: "destructive",
-                })
-                router.push('/admin/news/manage')
-            }
+            setOriginalNews(mapped)
+            setTitle(mapped.title || "")
+            setSummary(mapped.summary || "")
+            setContent(mapped.content || "")
+            setCategory(mapped.category || "")
+            setTags(mapped.tags || [])
+            setFeatured(mapped.featured || false)
+            setStatus((mapped.status as NewsDetail["status"]) || "DRAFT")
+            setCoverImage(mapped.coverImage || "")
         } catch (error) {
-            console.error('Error fetching news:', error)
+            console.error("Error fetching news:", error)
             toast({
                 title: "Lỗi",
-                description: "Không thể tải thông tin tin tức",
+                description: error instanceof Error ? error.message : "Không thể tải thông tin tin tức",
                 variant: "destructive",
             })
+            router.push("/admin/news/manage")
         } finally {
             setIsLoadingNews(false)
         }
@@ -182,21 +178,18 @@ export default function EditNewsPage() {
         setIsSubmitting(true)
 
         try {
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-
-            // Get token from localStorage
-            const token = localStorage.getItem('authToken')
+            const token = localStorage.getItem("authToken")
             if (!token) {
                 toast({
                     title: "Lỗi xác thực",
                     description: "Vui lòng đăng nhập lại",
                     variant: "destructive",
                 })
-                router.push('/admin/login?redirect=/admin/news/' + newsId + '/edit')
+                router.push("/admin/login?redirect=/admin/news/" + newsId + "/edit")
                 return
             }
 
-            const newsData = {
+            await newsService.update(newsId, {
                 title: title.trim(),
                 summary: summary.trim() || null,
                 content: content,
@@ -205,35 +198,21 @@ export default function EditNewsPage() {
                 featured: featured,
                 status: publishNow ? "PUBLISHED" : status,
                 coverImage: coverImage.trim() || null,
-            }
-
-            const response = await fetch(`${API_BASE_URL}/news/${newsId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify(newsData),
             })
 
-            const data = await response.json()
-
-            if (response.ok && data.result) {
-                toast({
-                    title: "Thành công",
-                    description: publishNow
-                        ? "Tin tức đã được cập nhật và xuất bản"
-                        : "Tin tức đã được cập nhật",
-                })
-                router.push(`/admin/news/${newsId}`)
-            } else {
-                throw new Error(data.message || 'Có lỗi xảy ra')
-            }
+            toast({
+                title: "Thành công",
+                description: publishNow
+                    ? "Tin tức đã được cập nhật và xuất bản"
+                    : "Tin tức đã được cập nhật",
+            })
+            router.push(`/admin/news/${newsId}`)
         } catch (error) {
-            console.error('Error updating news:', error)
+            console.error("Error updating news:", error)
             toast({
                 title: "Lỗi",
-                description: "Không thể cập nhật tin tức. Vui lòng thử lại.",
+                description:
+                    error instanceof Error ? error.message : "Không thể cập nhật tin tức. Vui lòng thử lại.",
                 variant: "destructive",
             })
         } finally {
@@ -322,14 +301,11 @@ export default function EditNewsPage() {
                                 <SelectValue placeholder="Chọn" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Lập trình">Lập trình</SelectItem>
-                                <SelectItem value="Sách kinh tế">Sách kinh tế</SelectItem>
-                                <SelectItem value="Văn học">Văn học</SelectItem>
-                                <SelectItem value="Tâm lý - Kỹ năng">Tâm lý</SelectItem>
-                                <SelectItem value="Thiếu nhi">Thiếu nhi</SelectItem>
-                                <SelectItem value="Khuyến mãi">Khuyến mãi</SelectItem>
-                                <SelectItem value="Tin tức">Tin tức</SelectItem>
-                                <SelectItem value="Giải trí">Giải trí</SelectItem>
+                                {NEWS_CATEGORIES.map((cat) => (
+                                    <SelectItem key={cat.value} value={cat.value}>
+                                        {cat.label}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
