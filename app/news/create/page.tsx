@@ -19,10 +19,11 @@ import { Switch } from "@/components/ui/switch"
 import { ArrowLeft, Save, Eye, X, FileText, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
+import { NEWS_CATEGORIES } from "@/lib/news-categories"
 import "./ckeditor-styles.css"
 
 // Dynamically import CKEditor component to avoid SSR issues
-const CKEditorComponent = dynamic(() => import("./ckeditor-component"), {
+const CKEditorComponent = dynamic(() => import("@/components/news/news-ckeditor"), {
   ssr: false,
   loading: () => (
     <div className="min-h-[600px] flex items-center justify-center border rounded-lg bg-muted/20">
@@ -280,14 +281,11 @@ export default function CreateNewsPage() {
                 <SelectValue placeholder="Chọn" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Lập trình">Lập trình</SelectItem>
-                <SelectItem value="Sách kinh tế">Sách kinh tế</SelectItem>
-                <SelectItem value="Văn học">Văn học</SelectItem>
-                <SelectItem value="Tâm lý - Kỹ năng">Tâm lý</SelectItem>
-                <SelectItem value="Thiếu nhi">Thiếu nhi</SelectItem>
-                <SelectItem value="Khuyến mãi">Khuyến mãi</SelectItem>
-                <SelectItem value="Tin tức">Tin tức</SelectItem>
-                <SelectItem value="Giải trí">Giải trí</SelectItem>
+                {NEWS_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

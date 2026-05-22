@@ -130,6 +130,10 @@ function transformPage<T, R>(
   }
 }
 
+function getErrorMessage(error: unknown): string | undefined {
+  return error instanceof Error && error.message ? error.message : undefined
+}
+
 export const promotionsService = {
   /**
    * Get paginated list of promotions (Admin only)
@@ -175,11 +179,39 @@ export const promotionsService = {
     message?: string
   }> {
     // apiClient.post đã unwrap result rồi
-    const response = await apiClient.post<any>("/promotions/validate", {
-      code: code,
-      orderValue: orderTotal,
-      bookIds: bookIds || [],
-    })
+    let validation: any
+    try {
+      validation = await apiClient.post<any>("/promotions/validate", {
+        code: code,
+        bookIds: bookIds || [],
+      })
+    } catch (error) {
+      return {
+        valid: false,
+        discount: 0,
+        message: getErrorMessage(error) || "Mã giảm giá không hợp lệ",
+      }
+    }
+    if (!validation.isValid) {
+      return {
+        valid: false,
+        discount: 0,
+        message: validation.message || validation.reason,
+      }
+    }
+    let response: any
+    try {
+      response = await apiClient.post<any>("/promotions/apply", {
+        code: code,
+        orderTotalBeforeDiscount: orderTotal,
+      })
+    } catch (error) {
+      return {
+        valid: false,
+        discount: 0,
+        message: getErrorMessage(error) || "Mã giảm giá không hợp lệ",
+      }
+    }
     // Transform validation response
     return {
       valid: response.isValid || false,

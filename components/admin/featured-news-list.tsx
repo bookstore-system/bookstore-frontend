@@ -9,6 +9,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Star, Eye, Calendar } from "lucide-react"
+import { newsService } from "@/lib/services/news.service"
 
 interface FeaturedNews {
   id: string
@@ -33,28 +34,32 @@ export function FeaturedNewsList({ totalFeatured }: FeaturedNewsListProps) {
     fetchFeaturedNews(currentPage)
   }, [currentPage])
 
-  const fetchFeaturedNews = (page: number) => {
+  const fetchFeaturedNews = async (page: number) => {
     setIsLoading(true)
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-    fetch(`${API_BASE_URL}/news?status=PUBLISHED&featured=true&page=${page}&size=${pageSize}&sort=views&order=desc`)
-      .then(res => res.json())
-      .then(data => {
-        const result = data.result
-        const newsItems = result?.content || []
-        setFeaturedNews(newsItems.map((news: any) => ({
-          id: news.newsID,
+    try {
+      const result = await newsService.listAdmin({
+        status: "PUBLISHED",
+        featured: true,
+        page,
+        size: pageSize,
+        sort: "views",
+        order: "desc",
+      })
+      setFeaturedNews(
+        (result.content || []).map((news) => ({
+          id: String(news.newsID),
           title: news.title,
           views: news.views,
           category: news.category,
-          publishedAt: news.publishedAt
-        })))
-        setTotalPages(result?.totalPages || 0)
-        setIsLoading(false)
-      })
-      .catch((error) => {
-        console.error('Error fetching featured news:', error)
-        setIsLoading(false)
-      })
+          publishedAt: news.publishedAt || news.createdAt,
+        }))
+      )
+      setTotalPages(result.totalPages || 0)
+    } catch (error) {
+      console.error("Error fetching featured news:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

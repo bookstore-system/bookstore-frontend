@@ -398,27 +398,6 @@ export function ChatbotFloatingButton() {
                   </p>
                 </div>
               </div>
-              {/* Quick Actions */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
-                  onClick={handleChatStore}
-                  title="Chat với cửa hàng"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
-                  onClick={handleCallStore}
-                  title="Gọi cho cửa hàng"
-                >
-                  <Phone className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
             {/* Store Info */}
             <div className="mt-2 flex flex-wrap gap-2 text-xs text-primary-foreground/80">

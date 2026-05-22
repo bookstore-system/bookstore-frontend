@@ -18,6 +18,7 @@ export * from "./shipment.service"
 export * from "./authors.service"
 export * from "./chat.service"
 export * from "./dashboard.service"
+export * from "./notifications.service"
 
 
 // Re-export apiClient for direct usage
