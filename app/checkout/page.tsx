@@ -19,7 +19,7 @@ import { toast } from "sonner"
 import { AddressSelectModal } from "@/components/products/address-select-modal"
 
 export default function CheckoutPage() {
-  const { cart, clearCart, loading, selectedItems } = useCart()
+  const { cart, loading, selectedItems } = useCart()
   const { user } = useAuth()
   const router = useRouter()
 
@@ -46,6 +46,7 @@ export default function CheckoutPage() {
   const [discountCode, setDiscountCode] = useState("")
   const [appliedCode, setAppliedCode] = useState<string | null>(null)
   const [discountAmount, setDiscountAmount] = useState(0)
+  const [discountError, setDiscountError] = useState<string | null>(null)
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false)
 
   // Items to checkout (filtered by selection)
@@ -150,26 +151,32 @@ export default function CheckoutPage() {
   const handleApplyDiscount = async () => {
     if (!discountCode.trim()) return
 
+    setDiscountError(null)
     setIsValidatingDiscount(true)
     try {
       const result = await promotionsService.validatePromotion(
         discountCode,
         subtotal,
-        items.map(i => i.bookId)
+        items.flatMap(item => Array.from({ length: item.quantity }, () => item.bookId))
       )
 
       if (result.valid) {
         setDiscountAmount(result.discount)
         setAppliedCode(discountCode)
+        setDiscountError(null)
         toast.success("Áp dụng mã giảm giá thành công")
       } else {
+        const message = result.message || "Mã giảm giá không hợp lệ"
         setDiscountAmount(0)
         setAppliedCode(null)
-        toast.error(result.message || "Mã giảm giá không hợp lệ")
+        setDiscountError(message)
+        toast.error(message)
       }
     } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : "Có lỗi xảy ra khi kiểm tra mã giảm giá"
       console.error("Discount validation error:", error)
-      toast.error("Có lỗi xảy ra khi kiểm tra mã giảm giá")
+      setDiscountError(message)
+      toast.error(message)
     } finally {
       setIsValidatingDiscount(false)
     }
@@ -179,6 +186,7 @@ export default function CheckoutPage() {
     setDiscountCode("")
     setAppliedCode(null)
     setDiscountAmount(0)
+    setDiscountError(null)
     setDiscountCode("")
   }
 
@@ -187,6 +195,7 @@ export default function CheckoutPage() {
     setDiscountCode("")
     setAppliedCode(null)
     setDiscountAmount(0)
+    setDiscountError(null)
   }
 
   const handleCheckout = async () => {
@@ -206,12 +215,26 @@ export default function CheckoutPage() {
     try {
       const origin = typeof window !== "undefined" && window.location.origin ? window.location.origin : "http://localhost:3000"
 
+      const getPaymentReturnUrl = (method: string) => {
+        switch (method) {
+          case "VNPay":
+            return `${origin}/payment/vnpay/return`
+          case "ZaloPay":
+            return `${origin}/payment/zalopay/return`
+          case "MoMo":
+            return `${origin}/payment/momo/return`
+          default:
+            return `${origin}/account/orders`
+        }
+      }
+
       const checkoutRequest: CheckoutRequest = {
         addressId: selectedAddressId,
         paymentMethod: paymentMethod,
         note: "",
-        bookIds: items.map(item => item.bookId),
-        redirectUrl: `${origin}/payment/momo/return`,
+        bookIds: items.flatMap(item => Array.from({ length: item.quantity }, () => item.bookId)),
+        shippingFee,
+        redirectUrl: getPaymentReturnUrl(paymentMethod),
         discountCode: appliedCode || undefined
       }
 
@@ -220,7 +243,6 @@ export default function CheckoutPage() {
       if (paymentMethod === "COD") {
         const order = await ordersService.checkout(checkoutRequest)
         toast.success("Đặt hàng thành công!")
-        await clearCart()
         router.push(`/account/orders/${order.id}`)
       } else if (paymentMethod === "VNPay") {
         const response = await ordersService.checkoutVNPay(checkoutRequest)
@@ -480,9 +502,14 @@ export default function CheckoutPage() {
                         type="text"
                         placeholder="Mã giảm giá"
                         value={discountCode}
-                        onChange={(e) => setDiscountCode(e.target.value)}
+                        onChange={(e) => {
+                          setDiscountCode(e.target.value)
+                          setDiscountError(null)
+                        }}
                         disabled={!!appliedCode}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-9 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-invalid={!!discountError}
+                        aria-describedby={discountError ? "discount-code-error" : undefined}
+                        className={`flex h-10 w-full rounded-md border bg-background px-9 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${discountError ? "border-destructive" : "border-input"}`}
                       />
                     </div>
                     {appliedCode ? (
@@ -499,6 +526,11 @@ export default function CheckoutPage() {
                       </Button>
                     )}
                   </div>
+                  {discountError && (
+                    <p id="discount-code-error" className="text-sm font-medium text-destructive">
+                      {discountError}
+                    </p>
+                  )}
                   {appliedCode && (
                     <div className="flex items-center gap-2 text-sm text-green-600">
                       <CheckCircle2 size={14} />
