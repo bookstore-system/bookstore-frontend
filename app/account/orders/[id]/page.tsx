@@ -2,7 +2,10 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { ordersService, OrderResponse } from "@/lib/services/orders.service";
-import { reviewsService } from "@/lib/services/reviews.service";
+import {
+  reviewsService,
+  type Review,
+} from "@/lib/services/reviews.service";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -90,7 +93,8 @@ export default function OrderDetailPage({
   const [ratings, setRatings] = useState<{ [key: number]: number }>({});
   const [reviews, setReviews] = useState<{ [key: number]: string }>({});
   const [submitting, setSubmitting] = useState<{ [key: number]: boolean }>({});
-  const [reviewedItems, setReviewedItems] = useState<Set<number>>(new Set());
+  /** bookId → review đã gửi trong đơn này */
+  const [reviewsByBookId, setReviewsByBookId] = useState<Record<string, Review>>({});
 
   // Unwrap params Promise
   const { id } = use(params);
@@ -114,6 +118,20 @@ export default function OrderDetailPage({
       setLoading(true);
       const data = await ordersService.getOrderById(id);
       setOrder(data);
+      if (data.status === "COMPLETED" && data.items?.length) {
+        try {
+          const orderReviews = await reviewsService.getReviewsByOrder(data.id);
+          const byBook: Record<string, Review> = {};
+          for (const r of orderReviews) {
+            if (r.bookId) byBook[r.bookId.toLowerCase()] = r;
+          }
+          setReviewsByBookId(byBook);
+        } catch (reviewErr) {
+          console.error("Failed to load order reviews:", reviewErr);
+        }
+      } else {
+        setReviewsByBookId({});
+      }
     } catch (error) {
       console.error("Failed to fetch order:", error);
       toast.error("Không thể tải thông tin đơn hàng");
@@ -503,14 +521,12 @@ export default function OrderDetailPage({
                   </h2>
                   <div className="space-y-4">
                     {order.items.map((item, index) => {
-                      // Skip if already reviewed
-                      if (reviewedItems.has(index)) {
-                        return null;
-                      }
-                      
+                      const submittedReview =
+                        reviewsByBookId[item.bookId.toLowerCase()];
+
                       return (
                       <div
-                        key={index}
+                        key={`${item.bookId}-${index}`}
                         className="flex gap-4 py-4 border-b border-border last:border-0"
                       >
                         {/* Book Image */}
@@ -529,6 +545,42 @@ export default function OrderDetailPage({
                             {item.bookTitle}
                           </p>
 
+                          {submittedReview ? (
+                            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                              <p className="text-sm font-medium text-emerald-700">
+                                Đánh giá của bạn
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`w-5 h-5 ${
+                                        star <= submittedReview.rating
+                                          ? "fill-yellow-400 text-yellow-400"
+                                          : "text-gray-300"
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-sm text-muted-foreground">
+                                  {submittedReview.rating} sao
+                                </span>
+                                {submittedReview.createdAt && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ·{" "}
+                                    {new Date(
+                                      submittedReview.createdAt
+                                    ).toLocaleDateString("vi-VN")}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
+                                {submittedReview.comment}
+                              </p>
+                            </div>
+                          ) : (
+                            <>
                           {/* Star Rating */}
                           <div className="flex items-center gap-2 mb-3">
                             <div className="flex gap-1">
@@ -605,20 +657,23 @@ export default function OrderDetailPage({
                                     [index]: true,
                                   }));
 
-                                  await reviewsService.createReview({
-                                    bookId: item.bookId,
-                                    rating: ratings[index],
-                                    comment: reviews[index],
-                                  });
+                                  const created =
+                                    await reviewsService.createReview({
+                                      bookId: item.bookId,
+                                      orderId: order.id,
+                                      rating: ratings[index],
+                                      comment: reviews[index],
+                                    });
 
                                   toast.success(
                                     "Đánh giá của bạn đã được gửi!"
                                   );
 
-                                  // Hide the reviewed item
-                                  setReviewedItems((prev) => new Set(prev).add(index));
+                                  setReviewsByBookId((prev) => ({
+                                    ...prev,
+                                    [item.bookId.toLowerCase()]: created,
+                                  }));
 
-                                  // Clear form after successful submission
                                   setRatings((prev) => {
                                     const newRatings = { ...prev };
                                     delete newRatings[index];
@@ -651,6 +706,8 @@ export default function OrderDetailPage({
                                 : "Gửi đánh giá"}
                             </Button>
                           </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     );

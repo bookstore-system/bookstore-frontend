@@ -8,16 +8,53 @@ import { apiClient, PaginatedResponse } from "../api-client"
 export interface Review {
   reviewID: string
   userId: string
-  userName: string
-  userAvatar?: string
+  bookId?: string
+  orderId?: string
+  userName?: string | null
+  userAvatar?: string | null
   rating: number
   comment: string
   isVerifiedPurchase: boolean
   createdAt: string
 }
 
+type ReviewRaw = Review & {
+  userID?: string
+  bookID?: string
+  orderID?: string
+}
+
+/** Backend có thể trả userName null nếu review không lưu tên khi tạo. */
+export function getReviewDisplayName(review: Pick<Review, "userName" | "userId">): string {
+  const name = review.userName?.trim()
+  if (name) return name
+  return "Người dùng"
+}
+
+export function getReviewInitial(review: Pick<Review, "userName" | "userId">): string {
+  const name = review.userName?.trim()
+  if (name) return name.charAt(0).toUpperCase()
+  const id = review.userId?.trim()
+  if (id) return id.charAt(0).toUpperCase()
+  return "?"
+}
+
+export function normalizeReview(raw: ReviewRaw): Review {
+  return {
+    ...raw,
+    reviewID: raw.reviewID ?? "",
+    userId: raw.userId ?? raw.userID ?? "",
+    bookId: raw.bookId ?? raw.bookID ?? "",
+    orderId: raw.orderId ?? raw.orderID ?? "",
+    userName: raw.userName ?? null,
+    userAvatar: raw.userAvatar ?? null,
+    isVerifiedPurchase: raw.isVerifiedPurchase ?? false,
+  }
+}
+
 export interface CreateReviewRequest {
   bookId: string
+  orderId: string
   rating: number
   comment: string
 }
@@ -50,11 +87,11 @@ export const reviewsService = {
       totalPages: number
       size: number
       number: number
-    }>(`/review/book/${bookId}`, filters)
+    }>(`/reviews/book/${bookId}`, filters)
 
     // apiClient already unwraps the result
     return {
-      content: response.content || [],
+      content: (response.content || []).map(normalizeReview),
       currentPage: response.number || 0,
       totalPages: response.totalPages || 0,
       totalElements: response.totalElements || 0,
@@ -69,10 +106,17 @@ export const reviewsService = {
   },
 
   /**
-   * Create a new review
+   * Create a new review (mỗi đơn hàng × mỗi sách tối đa một lần).
    */
   async createReview(data: CreateReviewRequest): Promise<Review> {
-    return apiClient.post<Review>("/review/book/add", data)
+    const created = await apiClient.post<ReviewRaw>("/reviews/book/add", data)
+    return normalizeReview(created)
+  },
+
+  /** Toàn bộ đánh giá đã gửi trong đơn (trang chi tiết đơn hàng). */
+  async getReviewsByOrder(orderId: string): Promise<Review[]> {
+    const list = await apiClient.get<ReviewRaw[]>(`/reviews/order/${orderId}`)
+    return Array.isArray(list) ? list.map(normalizeReview) : []
   },
 
   /**

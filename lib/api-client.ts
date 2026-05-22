@@ -126,7 +126,7 @@ class ApiClient {
             "Kiểm tra container `news-service` đã chạy (log: Started BookstoreNewsServiceApplication) rồi thử lại."
         } else if (response.status === 401) {
           errorMessage =
-            "Phiên đăng nhập hết hạn hoặc thiếu token. Vui lòng đăng nhập lại admin."
+            "Phiên đăng nhập hết hạn hoặc thiếu token. Vui lòng đăng nhập lại."
         } else if (response.status === 403) {
           errorMessage = errorMessage || "Bạn không có quyền thực hiện thao tác này."
         }

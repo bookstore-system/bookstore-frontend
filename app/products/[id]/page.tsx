@@ -8,7 +8,7 @@ import { Star, Heart, Share2, Truck, MapPin, Clock } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useCart } from "@/lib/cart-context"
-import { Book, booksService, Review, reviewsService, wishlistService, addressService, shipmentService, promotionsService } from "@/lib/services"
+import { Book, booksService, Review, reviewsService, getReviewDisplayName, getReviewInitial, wishlistService, addressService, shipmentService, promotionsService } from "@/lib/services"
 import type { Address } from "@/lib/services/address.service"
 import type { CalculateShippingResponse } from "@/lib/services/shipment.service"
 import type { Promotion } from "@/lib/services/promotions.service"
@@ -626,13 +626,13 @@ export default function ProductDetailPage() {
                         {review.userAvatar ? (
                           <img
                             src={review.userAvatar}
-                            alt={review.userName}
+                            alt={getReviewDisplayName(review)}
                             className="w-12 h-12 rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                             <span className="text-primary font-semibold text-lg">
-                              {review.userName.charAt(0).toUpperCase()}
+                              {getReviewInitial(review)}
                             </span>
                           </div>
                         )}
@@ -641,7 +641,7 @@ export default function ProductDetailPage() {
                       {/* Review Content */}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-foreground">{review.userName}</h4>
+                          <h4 className="font-semibold text-foreground">{getReviewDisplayName(review)}</h4>
                           {review.isVerifiedPurchase && (
                             <span className="text-xs bg-accent/10 text-accent px-2 py-1 rounded">
                               Đã mua hàng
