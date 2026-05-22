@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 
-function newsServerBase(): string {
-  const raw =
-    process.env.NEWS_SERVER_URL ||
-    process.env.NEXT_PUBLIC_NEWS_DIRECT_URL ||
-    "http://localhost:8089/api/v1"
+function gatewayBase(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"
   const url = raw.trim().replace(/\/$/, "")
   return /\/api(\/v\d+)?$/i.test(url) ? url : `${url}/api/v1`
 }
 
-/** Proxy GET /news/published — tránh CORS & gateway 401 cho guest. */
 export async function GET(request: NextRequest) {
   const qs = request.nextUrl.searchParams.toString()
-  const target = `${newsServerBase()}/news/published${qs ? `?${qs}` : ""}`
+  const target = `${gatewayBase()}/news/published${qs ? `?${qs}` : ""}`
 
   try {
     const upstream = await fetch(target, { cache: "no-store" })
@@ -24,7 +20,7 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     console.error("public news published proxy error:", e)
     return NextResponse.json(
-      { code: 502, message: "Không kết nối được news-service" },
+      { code: 502, message: "Khong ket noi duoc api-gateway" },
       { status: 502 }
     )
   }
