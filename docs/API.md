@@ -206,9 +206,9 @@ Query thường gặp: `page`, `size` (admin all); `startDate`, `endDate` (reven
 |--------|------|
 | GET | `/reviews` |
 | GET | `/reviews/my-reviews` |
-| GET | `/review/book/{bookId}` |
+| GET | `/reviews/book/{bookId}` |
 | GET | `/reviews/book/{bookId}/summary` |
-| POST | `/review/book/add` |
+| POST | `/reviews/book/add` |
 | POST | `/reviews/{id}/helpful` |
 | PUT | `/reviews/{id}` |
 | DELETE | `/reviews/{id}` |
