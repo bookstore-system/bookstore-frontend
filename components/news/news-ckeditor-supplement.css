@@ -1,0 +1,47 @@
+/* Layout pieces aligned with CKEditor 5 Builder (Document + outline + minimap + pagination) */
+
+.editor-container__sidebar_minimap {
+	margin: 0;
+	flex: 0 0 auto;
+	border-left: 1px solid var(--ck-color-toolbar-border);
+	position: relative;
+	overflow: hidden;
+	max-height: 100%;
+}
+
+.editor-container_include-minimap.ck-minimap__iframe-content {
+	background: hsl(0, 0%, 100%);
+}
+
+.editor-container_include-minimap.ck-minimap__iframe-content .ck.ck-editor__editable {
+	flex: 1 1 auto;
+	word-break: break-word;
+	box-sizing: border-box;
+	min-width: calc(210mm + 2px);
+	max-width: calc(210mm + 2px);
+	min-height: 297mm;
+	height: fit-content;
+	padding: 20mm 12mm;
+}
+
+.editor-container_include-minimap .editor-container__sidebar_minimap {
+	max-width: calc(var(--ck-sidebar-width) * 0.5);
+	min-width: calc(var(--ck-sidebar-width) * 0.5);
+}
+
+.editor-container_include-outline .editor-container__editor .ck.ck-editor__editable {
+	margin-left: 0;
+}
+
+.editor-container_include-outline.editor-container_include-fullscreen .ck-fullscreen__document-outline-header {
+	display: none;
+}
+
+.ck-content .table thead {
+	display: table-row-group;
+}
+
+.ck-content .table tr {
+	break-inside: avoid;
+	break-after: auto;
+}

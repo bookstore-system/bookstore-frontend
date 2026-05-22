@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { newsService } from "@/lib/services/news.service"
 
 interface NewsDetail {
     newsID: string
@@ -63,27 +64,20 @@ export default function NewsDetailPage() {
     const fetchNewsDetail = async () => {
         setIsLoading(true)
         try {
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-            const response = await fetch(`${API_BASE_URL}/news/${newsId}`)
-            const data = await response.json()
-
-            if (data.result) {
-                setNews(data.result)
-            } else {
-                toast({
-                    title: "Lỗi",
-                    description: "Không tìm thấy tin tức",
-                    variant: "destructive",
-                })
-                router.push('/admin/news/manage')
-            }
+            const result = await newsService.getById(newsId)
+            setNews({
+                ...result,
+                newsID: String(result.newsID ?? newsId),
+                tags: result.tags ?? [],
+            } as NewsDetail)
         } catch (error) {
-            console.error('Error fetching news:', error)
+            console.error("Error fetching news:", error)
             toast({
                 title: "Lỗi",
-                description: "Không thể tải thông tin tin tức",
+                description: error instanceof Error ? error.message : "Không thể tải thông tin tin tức",
                 variant: "destructive",
             })
+            router.push("/admin/news/manage")
         } finally {
             setIsLoading(false)
         }
@@ -99,55 +93,28 @@ export default function NewsDetailPage() {
 
         setIsUpdating(true)
         try {
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-            const token = localStorage.getItem('authToken')
+            const updated =
+                news.status === "ARCHIVED"
+                    ? await newsService.publish(newsId)
+                    : await newsService.archive(newsId)
 
-            if (!token) {
-                toast({
-                    title: "Lỗi xác thực",
-                    description: "Vui lòng đăng nhập lại",
-                    variant: "destructive",
-                })
-                return
-            }
-
-            const newStatus = news.status === 'ARCHIVED' ? 'PUBLISHED' : 'ARCHIVED'
-
-            // Only send required fields to avoid serialization errors
-            const response = await fetch(`${API_BASE_URL}/news/${newsId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    title: news.title,
-                    content: news.content,
-                    category: news.category,
-                    summary: news.summary || null,
-                    tags: news.tags || [],
-                    featured: news.featured || false,
-                    status: newStatus,
-                    coverImage: news.coverImage || null,
-                }),
+            setNews({
+                ...news,
+                ...updated,
+                newsID: String(updated.newsID ?? newsId),
+                status: updated.status as NewsDetail["status"],
             })
-
-            const data = await response.json()
-
-            if (response.ok && data.result) {
-                setNews({ ...news, status: newStatus })
-                toast({
-                    title: "Thành công",
-                    description: newStatus === 'ARCHIVED' ? "Đã ẩn tin tức" : "Đã hiển thị tin tức",
-                })
-            } else {
-                throw new Error(data.message || 'Có lỗi xảy ra')
-            }
+            toast({
+                title: "Thành công",
+                description:
+                    updated.status === "ARCHIVED" ? "Đã ẩn tin tức" : "Đã hiển thị tin tức",
+            })
         } catch (error) {
-            console.error('Error updating news:', error)
+            console.error("Error updating news:", error)
             toast({
                 title: "Lỗi",
-                description: "Không thể cập nhật trạng thái tin tức",
+                description:
+                    error instanceof Error ? error.message : "Không thể cập nhật trạng thái tin tức",
                 variant: "destructive",
             })
         } finally {

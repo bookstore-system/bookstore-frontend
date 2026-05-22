@@ -16,7 +16,7 @@ import { Newspaper, RefreshCw, List } from "lucide-react"
 import Link from "next/link"
 
 export default function NewsManagementPage() {
-  const { stats, isLoading, refreshStats } = useNewsManagement()
+  const { stats, isLoading, error, refreshStats } = useNewsManagement()
 
   if (isLoading) {
     return (
@@ -35,7 +35,20 @@ export default function NewsManagementPage() {
   }
 
   if (!stats) {
-    return null
+    return (
+      <div className="min-h-screen bg-muted/40 flex items-center justify-center p-8">
+        <div className="text-center max-w-md space-y-4">
+          <p className="text-destructive font-medium">
+            {error || "Không thể tải thống kê tin tức"}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Khởi động <code className="text-xs">news-service</code> trước (Docker: đợi log
+            Started), sau đó bấm Thử lại. Cần đăng nhập admin và token trong localStorage.
+          </p>
+          <Button onClick={refreshStats}>Thử lại</Button>
+        </div>
+      </div>
+    )
   }
 
   return (
