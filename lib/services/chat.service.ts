@@ -8,6 +8,7 @@ import apiClient from "../api-client";
 export interface ChatbotRequest {
   message: string;
   sessionId?: string | null;
+  userId?: string | null;
   attachments?: AttachmentRequest[];
 }
 
@@ -22,9 +23,41 @@ export interface AttachmentRequest {
   };
 }
 
+/**
+ * Trace của một tool agent đã thực thi.
+ * Trùng cấu trúc với `ChatbotResponse.ToolCallTrace` ở BE.
+ */
+export interface ToolCallTrace {
+  toolName: string;
+  arguments?: Record<string, unknown>;
+  success: boolean;
+  errorMessage?: string | null;
+  data?: Record<string, unknown> | null;
+}
+
+/**
+ * Card sách chuẩn hoá BE đã gom từ mọi tool. Mirror với
+ * `BookCard.java` ở bookstore-ai-service.
+ */
+export interface BookCardDto {
+  id: string;
+  title: string;
+  price?: number | null;
+  discountPrice?: number | null;
+  mainImageUrl?: string | null;
+  averageRating?: number | null;
+  reviewCount?: number | null;
+  stockQuantity?: number | null;
+  authorNames?: string[] | null;
+  source?: string | null;
+}
+
 export interface ChatbotResponse {
   response: string;
   sessionId: string;
+  intent?: string | null;
+  toolCalls?: ToolCallTrace[];
+  books?: BookCardDto[];
 }
 
 class ChatService {
@@ -48,7 +81,6 @@ class ChatService {
       throw new Error(errorMessage);
     }
   }
-
 }
 
 export const chatService = new ChatService();

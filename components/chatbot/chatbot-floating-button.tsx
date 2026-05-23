@@ -23,11 +23,36 @@ import {
 } from "@/components/ui/dialog";
 import { cn, cleanMarkdown } from "@/lib/utils";
 import Image from "next/image";
-import { chatService, type AttachmentRequest as ChatAttachmentRequest } from "@/lib/services/chat.service";
+import {
+  chatService,
+  type AttachmentRequest as ChatAttachmentRequest,
+  type ToolCallTrace,
+} from "@/lib/services/chat.service";
 import { useAuth } from "@/lib/auth-context";
+import {
+  ChatBookCards,
+  extractBooksFromToolCalls,
+  mapServerBooks,
+  type ChatBook,
+} from "@/components/chatbot/chat-book-cards";
 
 function isAdminUser(role?: string | null) {
   return typeof role === "string" && role.toUpperCase() === "ADMIN";
+}
+
+/**
+ * Lấy danh sách card sách từ response. Ưu tiên field `books` chuẩn hoá ở BE;
+ * nếu BE chưa trả (service version cũ) thì fallback parse `toolCalls[].data`.
+ */
+function pickBooks(response: {
+  books?: { id: string; title: string }[] | unknown[] | null;
+  toolCalls?: ToolCallTrace[] | null;
+}): ChatBook[] {
+  const fromServer = mapServerBooks(
+    response.books as Parameters<typeof mapServerBooks>[0]
+  );
+  if (fromServer.length > 0) return fromServer;
+  return extractBooksFromToolCalls(response.toolCalls ?? undefined);
 }
 
 interface Attachment {
@@ -49,6 +74,8 @@ interface Message {
   isUser: boolean;
   timestamp: Date;
   attachments?: Attachment[];
+  toolCalls?: ToolCallTrace[];
+  books?: ChatBook[];
 }
 
 // Thông tin cửa hàng (có thể lấy từ API sau)
@@ -157,23 +184,26 @@ export function ChatbotFloatingButton() {
         })
       );
 
-      // Call chatbot API
       const response = await chatService.sendMessage({
         message: currentInput || "",
         sessionId: sessionId,
+        userId: user?.id ?? null,
         attachments: chatAttachments.length > 0 ? chatAttachments : undefined,
       });
 
-      // Update sessionId if received
       if (response.sessionId) {
         setSessionId(response.sessionId);
       }
+
+      const books = pickBooks(response);
 
       const botMessage: Message = {
         id: Date.now().toString() + "bot",
         text: cleanMarkdown(response.response),
         isUser: false,
         timestamp: new Date(),
+        toolCalls: response.toolCalls,
+        books: books.length > 0 ? books : undefined,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error: any) {
@@ -190,7 +220,7 @@ export function ChatbotFloatingButton() {
     } finally {
       setLoading(false);
     }
-  }, [input, attachments, loading, sessionId]);
+  }, [input, attachments, loading, sessionId, user?.id]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -289,17 +319,22 @@ export function ChatbotFloatingButton() {
       const response = await chatService.sendMessage({
         message: suggestion,
         sessionId: sessionId,
+        userId: user?.id ?? null,
       });
 
       if (response.sessionId) {
         setSessionId(response.sessionId);
       }
 
+      const books = pickBooks(response);
+
       const botMessage: Message = {
         id: Date.now().toString() + "bot",
         text: cleanMarkdown(response.response),
         isUser: false,
         timestamp: new Date(),
+        toolCalls: response.toolCalls,
+        books: books.length > 0 ? books : undefined,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error: any) {
@@ -316,7 +351,7 @@ export function ChatbotFloatingButton() {
     } finally {
       setLoading(false);
     }
-  }, [loading, sessionId]);
+  }, [loading, sessionId, user?.id]);
 
   if (isAdminUser(user?.role)) {
     return null;
@@ -510,6 +545,13 @@ export function ChatbotFloatingButton() {
                           {message.text}
                         </p>
                       </div>
+                    )}
+                    {/* Book cards (khi agent đã gọi tool tìm/gợi ý sách) */}
+                    {!message.isUser && message.books && message.books.length > 0 && (
+                      <ChatBookCards
+                        books={message.books}
+                        onCardClick={() => setIsOpen(false)}
+                      />
                     )}
                     <span className="text-xs text-muted-foreground px-1">
                       {message.timestamp.toLocaleTimeString("vi-VN", {
