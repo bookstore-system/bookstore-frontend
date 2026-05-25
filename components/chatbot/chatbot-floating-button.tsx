@@ -86,6 +86,15 @@ const STORE_INFO = {
   address: "12 Đường Nguyễn Văn Bảo, Gò Vấp, HCM",
 };
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ChatbotFloatingButton() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -196,6 +205,19 @@ export function ChatbotFloatingButton() {
       }
 
       const books = pickBooks(response);
+      console.info("[Chatbot] /chatbot/chat response", {
+        intent: response.intent,
+        responseBooks: response.books?.length ?? 0,
+        pickedBooks: books.length,
+        toolCalls:
+          response.toolCalls?.map((tool) => ({
+            toolName: tool.toolName,
+            success: tool.success,
+            dataKeys: tool.data ? Object.keys(tool.data) : [],
+          })) ?? [],
+        bookIds: books.map((book) => book.id),
+        bookTitles: books.map((book) => book.title),
+      });
 
       const botMessage: Message = {
         id: Date.now().toString() + "bot",
@@ -222,22 +244,21 @@ export function ChatbotFloatingButton() {
     }
   }, [input, attachments, loading, sessionId, user?.id]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
+      const isImage = file.type.startsWith("image/");
       const attachment: Attachment = {
         id: Date.now().toString() + Math.random(),
-        type: file.type.startsWith("image/") ? "image" : "file",
+        type: isImage ? "image" : "file",
         file,
         name: file.name,
-        url: file.type.startsWith("image/")
-          ? URL.createObjectURL(file)
-          : undefined,
+        url: isImage ? await readFileAsDataUrl(file) : undefined,
       };
       setAttachments((prev) => [...prev, attachment]);
-    });
+    }
 
     // Reset input
     e.target.value = "";
@@ -327,6 +348,19 @@ export function ChatbotFloatingButton() {
       }
 
       const books = pickBooks(response);
+      console.info("[Chatbot] /chatbot/chat quick response", {
+        intent: response.intent,
+        responseBooks: response.books?.length ?? 0,
+        pickedBooks: books.length,
+        toolCalls:
+          response.toolCalls?.map((tool) => ({
+            toolName: tool.toolName,
+            success: tool.success,
+            dataKeys: tool.data ? Object.keys(tool.data) : [],
+          })) ?? [],
+        bookIds: books.map((book) => book.id),
+        bookTitles: books.map((book) => book.title),
+      });
 
       const botMessage: Message = {
         id: Date.now().toString() + "bot",
