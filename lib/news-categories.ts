@@ -11,6 +11,7 @@ export const NEWS_CATEGORIES = [
   { value: "Khuyến mãi", label: "Khuyến mãi" },
   { value: "Tin tức", label: "Tin tức" },
   { value: "Giải trí", label: "Giải trí" },
+  { value: "Khác", label: "Khác" },
 ] as const
 
 export type NewsCategoryValue = (typeof NEWS_CATEGORIES)[number]["value"]

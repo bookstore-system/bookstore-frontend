@@ -44,6 +44,17 @@ export interface UpdateNewsRequest {
   coverImage?: string | null
 }
 
+export interface CreateNewsRequest {
+  title: string
+  summary?: string | null
+  content: string
+  category: string
+  tags: string[]
+  featured: boolean
+  status: "PUBLISHED" | "DRAFT" | "ARCHIVED" | string
+  coverImage?: string | null
+}
+
 // News Category Stats
 export interface NewsByCategoryStats {
   category: string
@@ -124,6 +135,10 @@ export const newsService = {
   /** Admin: mọi trạng thái. Guest không gọi qua apiClient (không token). */
   async getById(id: string): Promise<NewsItem> {
     return apiClient.get<NewsItem>(`/news/${id}`)
+  },
+
+  async create(body: CreateNewsRequest): Promise<NewsItem> {
+    return apiClient.post<NewsItem>("/news", body)
   },
 
   async update(id: string, body: UpdateNewsRequest): Promise<NewsItem> {
