@@ -35,11 +35,11 @@ export function StatisticsSidebar({ books, className }: StatisticsSidebarProps) 
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Sách sắp hết hàng</span>
-            <span className="font-semibold text-sm text-orange-500">12</span>
+            <span className="font-semibold text-sm text-orange-500">0</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Doanh thu trung bình / sách</span>
-            <span className="font-semibold text-sm text-foreground">356.000₫</span>
+            <span className="font-semibold text-sm text-foreground">X₫</span>
           </div>
         </div>
       </div>

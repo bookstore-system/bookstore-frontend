@@ -23,11 +23,36 @@ import {
 } from "@/components/ui/dialog";
 import { cn, cleanMarkdown } from "@/lib/utils";
 import Image from "next/image";
-import { chatService, type AttachmentRequest as ChatAttachmentRequest } from "@/lib/services/chat.service";
+import {
+  chatService,
+  type AttachmentRequest as ChatAttachmentRequest,
+  type ToolCallTrace,
+} from "@/lib/services/chat.service";
 import { useAuth } from "@/lib/auth-context";
+import {
+  ChatBookCards,
+  extractBooksFromToolCalls,
+  mapServerBooks,
+  type ChatBook,
+} from "@/components/chatbot/chat-book-cards";
 
 function isAdminUser(role?: string | null) {
   return typeof role === "string" && role.toUpperCase() === "ADMIN";
+}
+
+/**
+ * Lấy danh sách card sách từ response. Ưu tiên field `books` chuẩn hoá ở BE;
+ * nếu BE chưa trả (service version cũ) thì fallback parse `toolCalls[].data`.
+ */
+function pickBooks(response: {
+  books?: { id: string; title: string }[] | unknown[] | null;
+  toolCalls?: ToolCallTrace[] | null;
+}): ChatBook[] {
+  const fromServer = mapServerBooks(
+    response.books as Parameters<typeof mapServerBooks>[0]
+  );
+  if (fromServer.length > 0) return fromServer;
+  return extractBooksFromToolCalls(response.toolCalls ?? undefined);
 }
 
 interface Attachment {
@@ -49,6 +74,8 @@ interface Message {
   isUser: boolean;
   timestamp: Date;
   attachments?: Attachment[];
+  toolCalls?: ToolCallTrace[];
+  books?: ChatBook[];
 }
 
 // Thông tin cửa hàng (có thể lấy từ API sau)
@@ -58,6 +85,15 @@ const STORE_INFO = {
   email: "contact@bookstore.vn",
   address: "12 Đường Nguyễn Văn Bảo, Gò Vấp, HCM",
 };
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 export function ChatbotFloatingButton() {
   const { user } = useAuth();
@@ -157,23 +193,39 @@ export function ChatbotFloatingButton() {
         })
       );
 
-      // Call chatbot API
       const response = await chatService.sendMessage({
         message: currentInput || "",
         sessionId: sessionId,
+        userId: user?.id ?? null,
         attachments: chatAttachments.length > 0 ? chatAttachments : undefined,
       });
 
-      // Update sessionId if received
       if (response.sessionId) {
         setSessionId(response.sessionId);
       }
+
+      const books = pickBooks(response);
+      console.info("[Chatbot] /chatbot/chat response", {
+        intent: response.intent,
+        responseBooks: response.books?.length ?? 0,
+        pickedBooks: books.length,
+        toolCalls:
+          response.toolCalls?.map((tool) => ({
+            toolName: tool.toolName,
+            success: tool.success,
+            dataKeys: tool.data ? Object.keys(tool.data) : [],
+          })) ?? [],
+        bookIds: books.map((book) => book.id),
+        bookTitles: books.map((book) => book.title),
+      });
 
       const botMessage: Message = {
         id: Date.now().toString() + "bot",
         text: cleanMarkdown(response.response),
         isUser: false,
         timestamp: new Date(),
+        toolCalls: response.toolCalls,
+        books: books.length > 0 ? books : undefined,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error: any) {
@@ -190,24 +242,23 @@ export function ChatbotFloatingButton() {
     } finally {
       setLoading(false);
     }
-  }, [input, attachments, loading, sessionId]);
+  }, [input, attachments, loading, sessionId, user?.id]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
+      const isImage = file.type.startsWith("image/");
       const attachment: Attachment = {
         id: Date.now().toString() + Math.random(),
-        type: file.type.startsWith("image/") ? "image" : "file",
+        type: isImage ? "image" : "file",
         file,
         name: file.name,
-        url: file.type.startsWith("image/")
-          ? URL.createObjectURL(file)
-          : undefined,
+        url: isImage ? await readFileAsDataUrl(file) : undefined,
       };
       setAttachments((prev) => [...prev, attachment]);
-    });
+    }
 
     // Reset input
     e.target.value = "";
@@ -289,17 +340,35 @@ export function ChatbotFloatingButton() {
       const response = await chatService.sendMessage({
         message: suggestion,
         sessionId: sessionId,
+        userId: user?.id ?? null,
       });
 
       if (response.sessionId) {
         setSessionId(response.sessionId);
       }
 
+      const books = pickBooks(response);
+      console.info("[Chatbot] /chatbot/chat quick response", {
+        intent: response.intent,
+        responseBooks: response.books?.length ?? 0,
+        pickedBooks: books.length,
+        toolCalls:
+          response.toolCalls?.map((tool) => ({
+            toolName: tool.toolName,
+            success: tool.success,
+            dataKeys: tool.data ? Object.keys(tool.data) : [],
+          })) ?? [],
+        bookIds: books.map((book) => book.id),
+        bookTitles: books.map((book) => book.title),
+      });
+
       const botMessage: Message = {
         id: Date.now().toString() + "bot",
         text: cleanMarkdown(response.response),
         isUser: false,
         timestamp: new Date(),
+        toolCalls: response.toolCalls,
+        books: books.length > 0 ? books : undefined,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error: any) {
@@ -316,7 +385,7 @@ export function ChatbotFloatingButton() {
     } finally {
       setLoading(false);
     }
-  }, [loading, sessionId]);
+  }, [loading, sessionId, user?.id]);
 
   if (isAdminUser(user?.role)) {
     return null;
@@ -510,6 +579,13 @@ export function ChatbotFloatingButton() {
                           {message.text}
                         </p>
                       </div>
+                    )}
+                    {/* Book cards (khi agent đã gọi tool tìm/gợi ý sách) */}
+                    {!message.isUser && message.books && message.books.length > 0 && (
+                      <ChatBookCards
+                        books={message.books}
+                        onCardClick={() => setIsOpen(false)}
+                      />
                     )}
                     <span className="text-xs text-muted-foreground px-1">
                       {message.timestamp.toLocaleTimeString("vi-VN", {

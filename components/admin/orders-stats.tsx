@@ -17,21 +17,21 @@ interface OrdersStatsProps {
 const defaultStatHighlights: StatHighlight[] = [
   { 
     label: "Đơn hàng hôm nay", 
-    value: 42, 
+    value: 0, 
     change: "+8.4%", 
     icon: PackageCheck, 
     tone: "text-primary" 
   },
   { 
     label: "Đang giao", 
-    value: 16, 
+    value: 0, 
     change: "+2 vận đơn mới", 
     icon: Truck, 
     tone: "text-blue-600" 
   },
   { 
     label: "Chờ xử lý", 
-    value: 9, 
+    value: 0, 
     change: "Ưu tiên xử lý", 
     icon: Clock, 
     tone: "text-amber-600" 
