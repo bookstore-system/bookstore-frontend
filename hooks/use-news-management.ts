@@ -6,51 +6,45 @@
 import { useState, useEffect, useCallback } from 'react'
 import { newsService, NewsStatsResponse } from '@/lib/services/news.service'
 
-const EMPTY_NEWS_STATS: NewsStatsResponse = {
-  totalNews: 0,
-  publishedNews: 0,
-  draftNews: 0,
-  archivedNews: 0,
-  featuredNews: 0,
-  newNewsThisMonth: 0,
-  newNewsThisWeek: 0,
-  newNewsToday: 0,
-  totalViews: 0,
-  avgViewsPerNews: 0,
-  totalComments: 0,
-  newsByCategory: [],
-  topViewedNews: [],
-  viewsTrend: [],
-  newsGrowthPercentage: 0,
-  viewsGrowthPercentage: 0,
-}
-
 export function useNewsManagement() {
   const [stats, setStats] = useState<NewsStatsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Fetch statistics
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  // Fetch statistics (retry khi news-service đang khởi động — mvn ~20–90s)
   const fetchStatistics = useCallback(async () => {
-    try {
-      setIsLoading(true)
+    setIsLoading(true)
+    setError(null)
 
-      const response = await newsService.getStatistics()
-
-      // Backend trả về: { code: 200, message: "...", result: NewsStatsResponse }
-      const apiResponse = response as any
-
-      if (apiResponse?.result) {
-        setStats(apiResponse.result)
-      } else if (apiResponse?.data) {
-        setStats(apiResponse.data)
-      } else {
+    const maxAttempts = 6
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await newsService.getStatistics()
         setStats(response)
+        setIsLoading(false)
+        return
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Không thể tải thống kê tin tức"
+        const retryable =
+          message.includes("500") ||
+          message.includes("News-service") ||
+          message.includes("Internal Server Error") ||
+          message.includes("kết nối")
+
+        if (attempt < maxAttempts && retryable) {
+          await sleep(4000)
+          continue
+        }
+
+        console.error("Failed to load news statistics:", err)
+        setStats(null)
+        setError(message)
+        setIsLoading(false)
+        return
       }
-    } catch (err) {
-      console.error('Failed to load news statistics:', err)
-      setStats(EMPTY_NEWS_STATS)
-    } finally {
-      setIsLoading(false)
     }
   }, [])
 
@@ -60,11 +54,9 @@ export function useNewsManagement() {
   }, [fetchStatistics])
 
   return {
-    // State
     stats,
     isLoading,
-
-    // Actions
+    error,
     refreshStats: fetchStatistics,
   }
 }

@@ -29,6 +29,7 @@ import {
   ChevronUp,
 } from "lucide-react"
 import Image from "next/image"
+import { fetchPublicNewsById } from "@/lib/public-news-api"
 
 interface NewsDetail {
   newsID: string
@@ -82,31 +83,25 @@ export default function NewsDetailPage() {
   const [showShareMenu, setShowShareMenu] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
 
-  useEffect(() => {
-    if (newsId) {
-      fetchNewsDetail()
-    }
-  }, [newsId])
-
   const fetchNewsDetail = async () => {
     setIsLoading(true)
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-      const response = await fetch(`${API_BASE_URL}/news/${newsId}`)
-      const data = await response.json()
-
-      console.log('API Response:', data)
-      console.log('Metadata sections:', data.result?.metadata?.sections)
-
-      if (data.result) {
-        setNews(data.result)
-        setIsLoading(false)
-      } else {
-        console.error('No result in API response')
-        setIsLoading(false)
+      const result = await fetchPublicNewsById(newsId)
+      if (result) {
+        setNews({
+          ...result,
+          newsID: String(result.newsID ?? newsId),
+          tags: result.tags ?? [],
+          images: (result.images ?? []).map((img) => ({
+            id: String(img.id),
+            url: img.url,
+            priority: img.priority,
+          })),
+        } as NewsDetail)
       }
     } catch (error) {
-      console.error('Error fetching news:', error)
+      console.error("Error fetching news:", error)
+    } finally {
       setIsLoading(false)
     }
   }

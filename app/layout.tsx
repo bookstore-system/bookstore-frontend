@@ -1,5 +1,6 @@
 import { OrderProvider } from "@/lib/order-context"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster as AppToaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import type React from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -54,8 +55,9 @@ export default function RootLayout({
               {children}
               <CartSidebar />
               <ChatbotFloatingButton />
-              <MiniGameChat />
-              <Toaster />
+              {/* <MiniGameChat /> */}
+              <AppToaster />
+              <SonnerToaster richColors position="top-right" />
             </CartProvider>
           </OrderProvider>
         </AuthProvider>

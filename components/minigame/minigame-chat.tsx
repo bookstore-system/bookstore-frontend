@@ -78,8 +78,7 @@ export function MiniGameChat() {
           return
         }
 
-        const res = await promotionsService.getPromotions({ page: 0, size: 10 })
-        const content = (res as any)?.data || (res as any)?.content || []
+        const content = await promotionsService.getActivePromotions()
         const palette = ["#E85D4C", "#4CAF50", "#FF9800", "#2196F3", "#9C27B0", "#F44336", "#00BCD4", "#FFC107"]
         const mapped: WheelSegment[] = content.slice(0, 5).map((promo: any, idx: number) => ({
           label: truncateWords(promo.name || promo.code || ""),

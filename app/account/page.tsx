@@ -10,6 +10,7 @@ import Link from "next/link";
 import { LogOut, User as UserIcon, ShoppingBag, Heart, Settings, MapPin, Edit, Trash2, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usersService } from "@/lib/services/users.service";
+import { notificationsService } from "@/lib/services/notifications.service";
 import { ordersService, OrderResponse } from "@/lib/services/orders.service";
 import Image from "next/image";
 
@@ -51,6 +52,10 @@ export default function AccountPage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [timeFilter, setTimeFilter] = useState("ALL")
+  const [promotionEmailEnabled, setPromotionEmailEnabled] = useState(false)
+  const [preferencesLoading, setPreferencesLoading] = useState(false)
+  const [preferencesSaving, setPreferencesSaving] = useState(false)
+  const [preferencesMessage, setPreferencesMessage] = useState("")
   // // Fetch user profile from API - fetch khi user có và chưa fetch
   // Fetch user profile from API
   const fetchUserProfile = async () => {
@@ -171,6 +176,9 @@ export default function AccountPage() {
     if (activeTab === "orders" && user) {
       loadOrders();
     }
+    if (activeTab === "settings" && user) {
+      loadNotificationPreferences();
+    }
   }, [activeTab, user]);
 
   const loadOrders = async () => {
@@ -186,6 +194,37 @@ export default function AccountPage() {
       console.error("Failed to fetch orders:", error)
     } finally {
       setOrdersLoading(false)
+    }
+  }
+
+  const loadNotificationPreferences = async () => {
+    try {
+      setPreferencesLoading(true)
+      setPreferencesMessage("")
+      const data = await notificationsService.getMyPreferences()
+      setPromotionEmailEnabled(data.promotionEmail)
+    } catch (error) {
+      console.error("Failed to fetch notification preferences:", error)
+      setPreferencesMessage("Không thể tải tùy chọn thông báo")
+    } finally {
+      setPreferencesLoading(false)
+    }
+  }
+
+  const handleSaveNotificationPreferences = async () => {
+    try {
+      setPreferencesSaving(true)
+      setPreferencesMessage("")
+      const data = await notificationsService.updatePreferences({
+        promotionEmail: promotionEmailEnabled,
+      })
+      setPromotionEmailEnabled(data.promotionEmail)
+      setPreferencesMessage("Đã lưu tùy chọn thông báo")
+    } catch (error) {
+      console.error("Failed to update notification preferences:", error)
+      setPreferencesMessage("Không thể lưu tùy chọn thông báo")
+    } finally {
+      setPreferencesSaving(false)
     }
   }
 
@@ -745,19 +784,35 @@ export default function AccountPage() {
                     <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                       <div>
                         <p className="font-medium text-foreground">
-                          Thông báo email
+                          Nhận email khi có khuyến mãi mới
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Nhận thông báo về đơn hàng và khuyến mãi
+                          Chỉ áp dụng cho email khuyến mãi từ NotFound Bookstore
                         </p>
                       </div>
                       <input
                         type="checkbox"
-                        defaultChecked
+                        checked={promotionEmailEnabled}
+                        disabled={preferencesLoading || preferencesSaving}
+                        onChange={(event) => {
+                          setPromotionEmailEnabled(event.target.checked)
+                          setPreferencesMessage("")
+                        }}
                         className="w-5 h-5"
                       />
                     </div>
-                    <Button className="mt-4">Lưu thay đổi</Button>
+                    {preferencesMessage && (
+                      <p className="text-sm text-muted-foreground">
+                        {preferencesMessage}
+                      </p>
+                    )}
+                    <Button
+                      className="mt-4"
+                      disabled={preferencesLoading || preferencesSaving}
+                      onClick={handleSaveNotificationPreferences}
+                    >
+                      {preferencesSaving ? "Đang lưu..." : "Lưu thay đổi"}
+                    </Button>
                   </div>
                 </div>
               )}

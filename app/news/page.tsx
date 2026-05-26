@@ -37,6 +37,12 @@ import {
   Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  fetchPopularNewsTags,
+  fetchPublishedNewsPage,
+  trackNewsTagSearch,
+} from "@/lib/public-news-api"
+import { NEWS_CATEGORIES } from "@/lib/news-categories"
 
 // Interface cho News
 interface NewsItem {
@@ -68,28 +74,10 @@ interface NewsPageResponse {
   size: number
 }
 
-// Popular tags để gợi ý
-const POPULAR_TAGS = [
-  "Sách mới",
-  "Khuyến mãi",
-  "Review sách",
-  "Tác giả",
-  "Văn học",
-  "Kinh tế",
-  "Kỹ năng sống",
-  "Thiếu nhi",
-]
-
-// Categories cho filter - Đồng bộ với admin
+// Đồng bộ danh mục với admin (lib/news-categories.ts)
 const CATEGORIES = [
   { value: "ALL", label: "Tất cả danh mục" },
-  { value: "Sách mới", label: "Sách mới" },
-  { value: "Tác giả", label: "Tác giả" },
-  { value: "Sự kiện", label: "Sự kiện" },
-  { value: "Khuyến mãi", label: "Khuyến mãi" },
-  { value: "Review", label: "Review" },
-  { value: "Hướng dẫn", label: "Hướng dẫn" },
-  { value: "Tin tức", label: "Tin tức" },
+  ...NEWS_CATEGORIES.map((c) => ({ value: c.value, label: c.label })),
 ]
 
 // Sort field options - Đồng bộ với admin
@@ -174,6 +162,10 @@ function calculateReadTime(content: string): number {
 // Placeholder image for news without cover - using placehold.co (more reliable)
 const PLACEHOLDER_IMAGE = "https://placehold.co/800x400/e2e8f0/64748b?text=Tin+tuc"
 
+function normalizeTagSearchInput(value: string): string {
+  return value.trim().replace(/\s+/g, " ")
+}
+
 // News Card Component - All cards same size
 function NewsCard({ news }: { news: NewsItem }) {
   const imageUrl = getSafeImageUrl(news, PLACEHOLDER_IMAGE)
@@ -198,7 +190,7 @@ function NewsCard({ news }: { news: NewsItem }) {
           }}
         />
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
 
         {/* Category badge */}
         <div className="absolute top-3 left-3">
@@ -293,10 +285,13 @@ function NewsCardSkeleton() {
 export default function NewsPage() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("ALL")
-  const [tagFilter, setTagFilter] = useState("")  // Text input for tag search like admin
+  const [tagFilter, setTagFilter] = useState("")
+  const [tagInputValue, setTagInputValue] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [popularTags, setPopularTags] = useState<string[]>([])
   const [sortField, setSortField] = useState("createdAt")
   const [sortOrder, setSortOrder] = useState("desc")
   const [currentPage, setCurrentPage] = useState(0)
@@ -306,65 +301,69 @@ export default function NewsPage() {
 
   const pageSize = 12
 
+  const loadPopularTags = async () => {
+    try {
+      const result = await fetchPopularNewsTags(6)
+      setPopularTags(result.map((item) => item.tag))
+    } catch (error) {
+      console.warn("Không thể tải tags phổ biến:", error)
+      setPopularTags([])
+    }
+  }
+
+  const recordTagSearch = async (tag: string) => {
+    try {
+      await trackNewsTagSearch(tag)
+      await loadPopularTags()
+    } catch (error) {
+      console.warn("Không thể ghi nhận tag search:", error)
+    }
+  }
+
+  useEffect(() => {
+    void loadPopularTags()
+  }, [])
+
   // Fetch data when any filter/sort changes - exactly like admin pattern
   useEffect(() => {
     const fetchNews = async () => {
       setIsLoading(true)
+      setErrorMessage(null)
       try {
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+        const tagQuery = tagFilter.trim() || (selectedTags.length === 1 ? selectedTags[0] : undefined)
 
-        // Build query params for advanced-search endpoint - matching admin
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          size: pageSize.toString(),
+        const pageResult = await fetchPublishedNewsPage({
+          page: currentPage,
+          size: pageSize,
+          keyword: searchQuery.trim() || undefined,
+          category: selectedCategory !== "ALL" ? selectedCategory : undefined,
+          tag: tagQuery,
           sortBy: sortField,
           sortOrder: sortOrder,
-          status: "PUBLISHED", // Only show published news for public
         })
 
-        // Add keyword filter if searching
-        if (searchQuery.trim()) {
-          params.append("keyword", searchQuery.trim())
-        }
-
-        // Add category filter if selected
-        if (selectedCategory && selectedCategory !== "ALL") {
-          params.append("category", selectedCategory)
-        }
-
-        // Add tag filter from text input (like admin)
-        if (tagFilter.trim()) {
-          params.append("tag", tagFilter.trim())
-        } else if (selectedTags.length > 0) {
-          // Fallback to selected tags from buttons
-          params.append("tag", selectedTags[0])
-        }
-
-        // Use advanced-search endpoint for full filtering support
-        const url = `${API_BASE_URL}/news/advanced-search`
-        console.log("Fetching news with params:", params.toString()) // Debug log
-        const response = await fetch(`${url}?${params.toString()}`)
-        const data = await response.json()
-
-        if (data.result) {
-          let newsData = data.result.content || []
-
-          // If multiple tags selected, filter remaining tags on client side
-          if (selectedTags.length > 1 && !tagFilter.trim()) {
-            newsData = newsData.filter((item: NewsItem) =>
-              selectedTags.slice(1).every(tag =>
-                item.tags?.some(t => t.toLowerCase().includes(tag.toLowerCase()))
-              )
-            )
-          }
+        if (pageResult) {
+          const newsData = (pageResult.content || []).map((item) => ({
+            ...item,
+            newsID: String(item.newsID ?? (item as { id?: string }).id ?? ""),
+          }))
 
           setNews(newsData)
-          setTotalPages(data.result.totalPages || 1)
-          setTotalElements(data.result.totalElements || newsData.length)
+          setTotalPages(pageResult.totalPages || 1)
+          setTotalElements(pageResult.totalElements ?? newsData.length)
+        } else {
+          setNews([])
+          setTotalPages(0)
+          setTotalElements(0)
         }
       } catch (error) {
         console.error("Error fetching news:", error)
         setNews([])
+        setTotalPages(0)
+        setTotalElements(0)
+        setErrorMessage(
+          error instanceof Error ? error.message : "Không thể tải danh sách tin tức lúc này."
+        )
       } finally {
         setIsLoading(false)
       }
@@ -381,15 +380,44 @@ export default function NewsPage() {
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    const normalizedTag = normalizeTagSearchInput(tagInputValue)
+    if (!normalizedTag && selectedTags.length > 0) {
+      setCurrentPage(0)
+      return
+    }
+    setSelectedTags([])
+    setTagFilter(normalizedTag)
+    setTagInputValue(normalizedTag)
     setCurrentPage(0)
+
+    if (normalizedTag) {
+      void recordTagSearch(normalizedTag)
+    }
   }
 
-  // Handle tag toggle
+  // Một tag tại một thời điểm (tránh chỉ gửi phần tử đầu khi chọn nhiều chip)
   const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    )
+    const isSelected = selectedTags.includes(tag)
+    setSelectedTags(isSelected ? [] : [tag])
+    setTagFilter("")
+    setTagInputValue("")
     setCurrentPage(0)
+
+    if (!isSelected) {
+      void recordTagSearch(tag)
+    }
+  }
+
+  const commitTagFilter = () => {
+    const normalizedTag = normalizeTagSearchInput(tagInputValue)
+    setSelectedTags([])
+    setTagFilter(normalizedTag)
+    setTagInputValue(normalizedTag)
+    setCurrentPage(0)
+
+    if (normalizedTag) {
+      void recordTagSearch(normalizedTag)
+    }
   }
 
   // Clear all filters
@@ -398,6 +426,7 @@ export default function NewsPage() {
     setSelectedCategory("ALL")
     setSelectedTags([])
     setTagFilter("")
+    setTagInputValue("")
     setSortField("createdAt")
     setSortOrder("desc")
     setCurrentPage(0)
@@ -474,9 +503,15 @@ export default function NewsPage() {
                   <div className="relative">
                     <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Tìm theo tag..."
-                      value={tagFilter}
-                      onChange={(e) => setTagFilter(e.target.value)}
+                      placeholder="Tìm theo tag rồi nhấn Enter..."
+                      value={tagInputValue}
+                      onChange={(e) => setTagInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          commitTagFilter()
+                        }
+                      }}
                       className="pl-10"
                     />
                   </div>
@@ -523,22 +558,28 @@ export default function NewsPage() {
                   <Tag className="h-4 w-4" />
                   Tags phổ biến
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {POPULAR_TAGS.map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => toggleTag(tag)}
-                      className={cn(
-                        "px-3 py-1 rounded-full text-sm border transition-colors",
-                        selectedTags.includes(tag)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background hover:bg-muted border-border"
-                      )}
-                    >
-                      #{tag}
-                    </button>
-                  ))}
-                </div>
+                {popularTags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {popularTags.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-sm border transition-colors",
+                          selectedTags.includes(tag)
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-muted border-border"
+                        )}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Chưa có đủ dữ liệu tìm kiếm để đề xuất tag phổ biến.
+                  </p>
+                )}
               </div>
 
               {/* Clear filters */}
@@ -602,6 +643,19 @@ export default function NewsPage() {
             {Array.from({ length: 6 }).map((_, i) => (
               <NewsCardSkeleton key={i} />
             ))}
+          </div>
+        ) : errorMessage ? (
+          <div className="text-center py-16">
+            <Newspaper className="h-16 w-16 mx-auto text-destructive/50 mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              Không thể tải tin tức
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {errorMessage}
+            </p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Tải lại trang
+            </Button>
           </div>
         ) : news.length === 0 ? (
           <div className="text-center py-16">

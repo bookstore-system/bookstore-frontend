@@ -118,7 +118,18 @@ class ApiClient {
           errorData = { message: response.statusText || "Unknown error" }
         }
         // Backend returns { code, message, result } format
-        const errorMessage = errorData.message || errorData.error || `HTTP Error: ${response.status}`
+        let errorMessage =
+          errorData.message || errorData.error || `HTTP Error: ${response.status}`
+        if (response.status === 500) {
+          errorMessage =
+            "News-service chưa sẵn sàng hoặc gateway không kết nối được tới news-service. " +
+            "Kiểm tra container `news-service` đã chạy (log: Started BookstoreNewsServiceApplication) rồi thử lại."
+        } else if (response.status === 401) {
+          errorMessage =
+            "Phiên đăng nhập hết hạn hoặc thiếu token. Vui lòng đăng nhập lại."
+        } else if (response.status === 403) {
+          errorMessage = errorMessage || "Bạn không có quyền thực hiện thao tác này."
+        }
         throw new Error(errorMessage)
       }
 

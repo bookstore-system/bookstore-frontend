@@ -32,11 +32,17 @@ export function useOrderFilters(orders: OrderResponse[]) {
 
   // Filtered orders
   const filteredOrders = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.toLowerCase()
+
     return orders.filter((order) => {
+      const customerName = order.customerName ?? ""
+      const id = order.id ?? ""
+      const orderCode = order.orderCode ?? ""
+
       const matchesSearch =
-        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.orderCode && order.orderCode.toLowerCase().includes(searchTerm.toLowerCase()))
+        customerName.toLowerCase().includes(normalizedSearchTerm) ||
+        id.toLowerCase().includes(normalizedSearchTerm) ||
+        orderCode.toLowerCase().includes(normalizedSearchTerm)
 
       const matchesStatus = activeStatus === "ALL" || order.status === activeStatus
       // Assuming all orders are from Website for now as we don't have channel in OrderResponse

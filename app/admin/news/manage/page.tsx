@@ -53,18 +53,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-
-interface NewsItem {
-  newsID: string  // Backend trả về newsID (uppercase D)
-  title: string
-  category: string
-  tags: string[]
-  views: number
-  featured: boolean
-  status: "PUBLISHED" | "DRAFT" | "ARCHIVED"
-  createdAt: string
-  authorName?: string  // Backend trả về authorName
-}
+import { newsService, type NewsItem } from "@/lib/services/news.service"
+import { NEWS_CATEGORIES } from "@/lib/news-categories"
 
 type SortField = "title" | "views" | "createdAt" | "category"
 type SortOrder = "asc" | "desc"
@@ -81,8 +71,6 @@ export default function NewsManagePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  // State for news data
-  const [allNews, setAllNews] = useState<NewsItem[]>([])
   const [filteredNews, setFilteredNews] = useState<NewsItem[]>([])
   const [totalItems, setTotalItems] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -96,31 +84,34 @@ export default function NewsManagePage() {
   const fetchNews = async () => {
     setIsLoading(true)
     try {
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: (currentPage - 1).toString(),
-        size: itemsPerPage.toString(),
+      const result = await newsService.list({
+        page: currentPage - 1,
+        size: itemsPerPage,
         sortBy: sortField,
         sortOrder: sortOrder,
+        keyword: searchQuery || undefined,
+        category: categoryFilter !== "ALL" ? categoryFilter : undefined,
+        status: statusFilter !== "ALL" ? statusFilter : undefined,
+        tag: tagFilter || undefined,
       })
 
-      if (searchQuery) params.append('keyword', searchQuery)
-      if (categoryFilter !== 'ALL') params.append('category', categoryFilter)
-      if (statusFilter !== 'ALL') params.append('status', statusFilter)
-      if (tagFilter) params.append('tag', tagFilter)
+      const items = (result.content || []).map((item) => ({
+        ...item,
+        newsID: String(item.newsID ?? (item as { id?: string }).id ?? ""),
+        tags: item.tags ?? [],
+      }))
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-      const response = await fetch(`${API_BASE_URL}/news/advanced-search?${params.toString()}`)
-      const data = await response.json()
-
-      // Backend trả về ApiResponse wrapper với result.content
-      const result = data.result || data
-      if (result.content) {
-        setFilteredNews(result.content)
-        setTotalItems(result.totalElements || 0)
-      }
+      setFilteredNews(items)
+      setTotalItems(result.totalElements ?? 0)
     } catch (error) {
-      console.error('Error fetching news:', error)
+      console.error("Error fetching news:", error)
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách tin tức",
+        variant: "destructive",
+      })
+      setFilteredNews([])
+      setTotalItems(0)
     } finally {
       setIsLoading(false)
     }
@@ -189,64 +180,17 @@ export default function NewsManagePage() {
     }
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-      const token = localStorage.getItem('authToken')
-
-      if (!token) {
-        toast({
-          title: "Lỗi xác thực",
-          description: "Vui lòng đăng nhập lại",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // First, fetch the current news data
-      const fetchResponse = await fetch(`${API_BASE_URL}/news/${newsId}`)
-      const fetchData = await fetchResponse.json()
-
-      if (!fetchData.result) {
-        throw new Error('Không tìm thấy tin tức')
-      }
-
-      const currentNews = fetchData.result
-
-      // Update with all required fields + new status
-      const response = await fetch(`${API_BASE_URL}/news/${newsId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: currentNews.title,
-          content: currentNews.content,
-          category: currentNews.category,
-          summary: currentNews.summary || null,
-          tags: currentNews.tags || [],
-          featured: currentNews.featured || false,
-          status: "ARCHIVED",
-          coverImage: currentNews.coverImage || null,
-        }),
+      await newsService.archive(newsId)
+      toast({
+        title: "Thành công",
+        description: "Tin tức đã được ẩn khỏi hệ thống",
       })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        toast({
-          title: "Thành công",
-          description: "Tin tức đã được ẩn khỏi hệ thống",
-        })
-        // Refresh the list
-        fetchNews()
-      } else {
-        throw new Error(data.message || 'Có lỗi xảy ra')
-      }
+      fetchNews()
     } catch (error) {
-      console.error('Error hiding news:', error)
+      console.error("Error hiding news:", error)
       toast({
         title: "Lỗi",
-        description: "Không thể ẩn tin tức. Vui lòng thử lại.",
+        description: error instanceof Error ? error.message : "Không thể ẩn tin tức. Vui lòng thử lại.",
         variant: "destructive",
       })
     }
@@ -259,64 +203,17 @@ export default function NewsManagePage() {
     }
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
-      const token = localStorage.getItem('authToken')
-
-      if (!token) {
-        toast({
-          title: "Lỗi xác thực",
-          description: "Vui lòng đăng nhập lại",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // First, fetch the current news data
-      const fetchResponse = await fetch(`${API_BASE_URL}/news/${newsId}`)
-      const fetchData = await fetchResponse.json()
-
-      if (!fetchData.result) {
-        throw new Error('Không tìm thấy tin tức')
-      }
-
-      const currentNews = fetchData.result
-
-      // Update with all required fields + new status PUBLISHED
-      const response = await fetch(`${API_BASE_URL}/news/${newsId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: currentNews.title,
-          content: currentNews.content,
-          category: currentNews.category,
-          summary: currentNews.summary || null,
-          tags: currentNews.tags || [],
-          featured: currentNews.featured || false,
-          status: "PUBLISHED",
-          coverImage: currentNews.coverImage || null,
-        }),
+      await newsService.publish(newsId)
+      toast({
+        title: "Thành công",
+        description: "Tin tức đã được hiển thị lại trên hệ thống",
       })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        toast({
-          title: "Thành công",
-          description: "Tin tức đã được hiển thị lại trên hệ thống",
-        })
-        // Refresh the list
-        fetchNews()
-      } else {
-        throw new Error(data.message || 'Có lỗi xảy ra')
-      }
+      fetchNews()
     } catch (error) {
-      console.error('Error showing news:', error)
+      console.error("Error showing news:", error)
       toast({
         title: "Lỗi",
-        description: "Không thể hiển thị tin tức. Vui lòng thử lại.",
+        description: error instanceof Error ? error.message : "Không thể hiển thị tin tức. Vui lòng thử lại.",
         variant: "destructive",
       })
     }
@@ -385,13 +282,11 @@ export default function NewsManagePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">Tất cả danh mục</SelectItem>
-                    <SelectItem value="Sách mới">Sách mới</SelectItem>
-                    <SelectItem value="Tác giả">Tác giả</SelectItem>
-                    <SelectItem value="Sự kiện">Sự kiện</SelectItem>
-                    <SelectItem value="Khuyến mãi">Khuyến mãi</SelectItem>
-                    <SelectItem value="Review">Review</SelectItem>
-                    <SelectItem value="Hướng dẫn">Hướng dẫn</SelectItem>
-                    <SelectItem value="Tin tức">Tin tức</SelectItem>
+                    {NEWS_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -493,7 +388,7 @@ export default function NewsManagePage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">
-                Danh sách tin tức ({filteredNews.length})
+                Danh sách tin tức ({totalItems})
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Select value={sortField} onValueChange={(value) => setSortField(value as SortField)}>
@@ -656,8 +551,8 @@ export default function NewsManagePage() {
               <div className="flex items-center justify-between mt-4">
                 <p className="text-sm text-muted-foreground">
                   Hiển thị {(currentPage - 1) * itemsPerPage + 1} -{" "}
-                  {Math.min(currentPage * itemsPerPage, filteredNews.length)} trong{" "}
-                  {filteredNews.length} kết quả
+                  {Math.min(currentPage * itemsPerPage, totalItems)} trong{" "}
+                  {totalItems} kết quả
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
