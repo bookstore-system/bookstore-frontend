@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
-import { API_BASE_URL, backendOriginFromApiBaseUrl } from "@/lib/api-client"
+import { API_BASE_URL } from "@/lib/api-client"
 
 type LoginFormVariant = "user" | "admin"
 
@@ -123,11 +123,8 @@ function UserLoginExtras() {
       return process.env.NEXT_PUBLIC_GOOGLE_OAUTH_URL
     }
 
-    const backendBaseUrl = backendOriginFromApiBaseUrl(API_BASE_URL)
-    const redirectUri = `${backendBaseUrl}/api/auth/google/callback`
-    const clientId =
-      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-      "890914555873-2fj89b3o9srebvjhu6a66hjehtljac8p.apps.googleusercontent.com"
+    const redirectUri = `${API_BASE_URL}/auth/google/callback`
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
     return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid%20email%20profile`
   }
