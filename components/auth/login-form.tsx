@@ -74,7 +74,7 @@ function LoginFormContent({ variant = "user" }: { variant?: LoginFormVariant }) 
           value={formData.username}
           onChange={(e) => setFormData({ ...formData, username: e.target.value })}
           className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="admin"
+          placeholder="Nhập tên đăng nhập hoặc email"
         />
       </div>
 

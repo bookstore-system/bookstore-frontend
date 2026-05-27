@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar, Eye, Tag, User } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { NewsDetailActions } from "@/components/news/news-detail-actions"
+import { RelatedBooks } from "@/components/news/related-books"
 import { NewsTableOfContents, type NewsTocSection } from "@/components/news/news-table-of-contents"
 import type { NewsItem } from "@/lib/services/news.service"
 
@@ -200,6 +201,8 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
                 </div>
               </div>
             )}
+
+            <RelatedBooks newsTitle={news.title} />
           </article>
         </div>
       </main>
