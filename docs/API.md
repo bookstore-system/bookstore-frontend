@@ -15,13 +15,13 @@ Tài liệu tổng hợp các endpoint mà FE gọi (theo `lib/services/*`, `lib
 
 ---
 
-## OAuth Google (ngoài prefix versioned)
+## OAuth Google
 
 Redirect URI được build trong FE dạng:
 
-`{origin}/api/auth/google/callback`
+`{origin}/api/v1/auth/google/callback`
 
-Trong đó `origin` là host backend (đã bỏ suffix `/api` hoặc `/api/v1`). Không nhất thiết trùng path version của REST API.
+Trong đó `origin` là host backend (đã bỏ suffix `/api` hoặc `/api/v1`).
 
 ---
 
@@ -31,7 +31,6 @@ Trong đó `origin` là host backend (đã bỏ suffix `/api` hoặc `/api/v1`).
 |--------|------|
 | POST | `/auth/login` |
 | POST | `/auth/register` |
-| POST | `/auth/google` |
 | POST | `/auth/logout` |
 | GET | `/auth/me` |
 | POST | `/auth/refresh` |

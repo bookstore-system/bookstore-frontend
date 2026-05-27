@@ -55,6 +55,7 @@ export interface User {
   role: "user" | "admin" | "CUSTOMER" | "ADMIN";
   status?: "active" | "inactive" | "banned";
   emailVerified?: boolean;
+  isEmailVerified?: boolean;
   addresses?: Address[];
   totalOrders?: number;
   totalSpent?: number;

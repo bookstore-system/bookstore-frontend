@@ -37,8 +37,51 @@ function AuthCallbackHandler() {
     const refreshToken = searchParams.get("refreshToken")
     const error = searchParams.get("error")
     const userParam = searchParams.get("user")
+    const emailVerified = searchParams.get("email_verified")
 
-    if (token) {
+    if (emailVerified === "true") {
+      setHasProcessedCallback(true)
+      const refreshVerifiedUser = async () => {
+        if (!localStorage.getItem("authToken")) {
+          return
+        }
+
+        try {
+          const profile = await usersService.getMyProfile()
+          const updatedUser = {
+            ...(user ?? {}),
+            id: profile.id ?? user?.id ?? "",
+            email: profile.email ?? user?.email ?? "",
+            fullName:
+              profile.fullName ??
+              user?.fullName ??
+              profile.username ??
+              (profile.email ? profile.email.split("@")[0] : ""),
+            role: (profile.role ?? user?.role ?? "CUSTOMER").toUpperCase(),
+            username: profile.username ?? user?.username,
+            phone: profile.phoneNumber ?? user?.phone,
+            avatar: profile.avatarUrl ?? profile.avatar ?? user?.avatar,
+            isEmailVerified: profile.isEmailVerified ?? profile.emailVerified ?? true,
+            createdAt: user?.createdAt ?? new Date().toISOString(),
+          }
+
+          localStorage.setItem("user", JSON.stringify(updatedUser))
+          setUserState(updatedUser)
+          window.dispatchEvent(new CustomEvent("emailVerified"))
+        } catch (error) {
+          console.error("Failed to refresh profile after email verification:", error)
+        }
+      }
+
+      refreshVerifiedUser()
+      setTimeout(() => {
+        message.success({
+          content: "Xác thực email thành công.",
+          duration: 4,
+        })
+      }, 0)
+      router.replace("/")
+    } else if (token) {
       // Lưu token do backend trả về sau khi đăng nhập Google (giống hệt login bằng username)
       localStorage.setItem("authToken", token)
 
@@ -76,7 +119,7 @@ function AuthCallbackHandler() {
             username: parsed.username,
             phone: parsed.phoneNumber,
             avatar: parsed.avatarUrl ?? parsed.avatar,
-            emailVerified: parsed.emailVerified ?? parsed.isEmailVerified ?? false,
+            isEmailVerified: parsed.isEmailVerified ?? parsed.emailVerified ?? false,
             createdAt: new Date().toISOString(),
           }
 
@@ -113,7 +156,7 @@ function AuthCallbackHandler() {
               username: userInfo.username,
               phone: userInfo.phoneNumber || undefined, // Convert null to undefined
               avatar: userInfo.avatarUrl || userInfo.avatar, // Lấy avatarUrl nếu có (từ Google)
-              emailVerified: userInfo.emailVerified ?? false,
+              isEmailVerified: userInfo.isEmailVerified ?? userInfo.emailVerified ?? false,
               createdAt: new Date().toISOString(),
             }
 
@@ -141,7 +184,7 @@ function AuthCallbackHandler() {
                   username: payload.sub || "",
                   phone: payload.phoneNumber || "",
                   avatar: payload.avatar || "",
-                  emailVerified: payload.emailVerified || false,
+                  isEmailVerified: payload.isEmailVerified || payload.emailVerified || false,
                   createdAt: new Date().toISOString(),
                 }
 
@@ -196,6 +239,8 @@ function AuthCallbackHandler() {
         errorMessage = "Không thể đăng nhập bằng Google. Backend đã xử lý nhưng không trả về token. Vui lòng kiểm tra backend hoặc đăng nhập bằng tên đăng nhập/mật khẩu."
       } else if (error === "google_invalid_code") {
         errorMessage = "Mã xác thực không hợp lệ. Vui lòng thử lại."
+      } else if (error === "email_verification_failed") {
+        errorMessage = "Link xác thực email không hợp lệ hoặc đã hết hạn. Vui lòng gửi lại email xác thực."
       }
 
       // Đánh dấu đã xử lý callback trước khi hiển thị message
