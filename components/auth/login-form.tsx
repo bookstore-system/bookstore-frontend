@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
-import { API_BASE_URL, backendOriginFromApiBaseUrl } from "@/lib/api-client"
+import { API_BASE_URL } from "@/lib/api-client"
 
 type LoginFormVariant = "user" | "admin"
 
@@ -18,7 +18,7 @@ function LoginFormContent({ variant = "user" }: { variant?: LoginFormVariant }) 
   const [formData, setFormData] = useState({ username: "", password: "" })
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const { login, isLoading } = useAuth()
+  const { login, isLoading, logout } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect")
@@ -37,6 +37,19 @@ function LoginFormContent({ variant = "user" }: { variant?: LoginFormVariant }) 
       const isAdmin =
         typeof authenticatedUser.role === "string" &&
         authenticatedUser.role.toUpperCase() === "ADMIN"
+
+      // If this is a user login form but the account is an admin account,
+      // treat it like a generic failure so the message matches the public login page.
+      if (!isAdminLogin && isAdmin) {
+        // Clear any stored auth state because admin should not be logged in via public form
+        try {
+          logout()
+        } catch (e) {
+          // ignore logout errors
+        }
+        setError("Đăng nhập thất bại. Vui lòng thử lại.")
+        return
+      }
 
       if (isAdminLogin && !isAdmin) {
         setError("Tài khoản không có quyền truy cập khu vực quản trị.")
@@ -74,7 +87,7 @@ function LoginFormContent({ variant = "user" }: { variant?: LoginFormVariant }) 
           value={formData.username}
           onChange={(e) => setFormData({ ...formData, username: e.target.value })}
           className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="admin"
+          placeholder="Nhập tên đăng nhập hoặc email"
         />
       </div>
 
@@ -123,11 +136,8 @@ function UserLoginExtras() {
       return process.env.NEXT_PUBLIC_GOOGLE_OAUTH_URL
     }
 
-    const backendBaseUrl = backendOriginFromApiBaseUrl(API_BASE_URL)
-    const redirectUri = `${backendBaseUrl}/api/auth/google/callback`
-    const clientId =
-      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-      "890914555873-2fj89b3o9srebvjhu6a66hjehtljac8p.apps.googleusercontent.com"
+    const redirectUri = `${API_BASE_URL}/auth/google/callback`
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
     return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid%20email%20profile`
   }

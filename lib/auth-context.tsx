@@ -23,30 +23,11 @@ export interface User {
   dateOfBirth?: string | null;
 }
 
-function decodeGoogleCredential(credential: string) {
-  const parts = credential.split(".");
-  if (parts.length < 2) {
-    throw new Error("GOOGLE_SIGNIN_INVALID_TOKEN");
-  }
-
-  const base64 = parts[1];
-  const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-  const decoded = atob(padded);
-
-  try {
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error("GOOGLE_SIGNIN_INVALID_TOKEN");
-  }
-}
-
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<User>;
   signup: (email: string, password: string, fullName: string) => Promise<User>;
-  loginWithGoogle: (credential: string) => Promise<User>;
   logout: () => void;
   isAuthenticated: boolean;
   setUserState: (user: User | null) => void;
@@ -75,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             username: parsedUser.username,
             phone: parsedUser.phone,
             avatar: parsedUser.avatar,
-            isEmailVerified: parsedUser.isEmailVerified ?? false,
+            isEmailVerified: parsedUser.isEmailVerified ?? (parsedUser as any).emailVerified ?? false,
             createdAt: parsedUser.createdAt ?? new Date().toISOString(),
           });
         }
@@ -131,79 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async (credential: string) => {
-    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-      throw new Error("GOOGLE_SIGNIN_UNCONFIGURED");
-    }
-
-    if (!credential) {
-      throw new Error("GOOGLE_SIGNIN_CREDENTIAL_MISSING");
-    }
-
-    setIsLoading(true);
-    try {
-      // Validate credential format before sending to API
-      const payload = decodeGoogleCredential(credential);
-      const email = typeof payload?.email === "string" ? payload.email : "";
-      const emailVerified =
-        typeof payload?.email_verified === "boolean"
-          ? payload.email_verified
-          : true;
-
-      if (!email) {
-        throw new Error("GOOGLE_SIGNIN_EMAIL_REQUIRED");
-      }
-
-      if (!emailVerified) {
-        throw new Error("GOOGLE_SIGNIN_EMAIL_NOT_VERIFIED");
-      }
-
-      // Call API service
-      const response = await authService.loginWithGoogle({ credential });
-
-      const authenticatedUser: User = {
-        id: response.user.id,
-        email: response.user.email,
-        fullName:
-          response.user.fullName ??
-          response.user.username ??
-          response.user.email.split("@")[0],
-        role: response.user.role.toUpperCase(),
-        username: response.user.username,
-        avatar: response.user.avatarUrl || response.user.avatar,
-        isEmailVerified: response.user.isEmailVerified ?? true,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Store token and user
-      localStorage.setItem("authToken", response.token);
-      if (response.refreshToken) {
-        localStorage.setItem("refreshToken", response.refreshToken);
-      }
-      localStorage.setItem("user", JSON.stringify(authenticatedUser));
-      setUser(authenticatedUser);
-
-      return authenticatedUser;
-    } catch (error) {
-      if (error instanceof Error) {
-        // Re-throw validation errors as-is
-        if (error.message.startsWith("GOOGLE_SIGNIN_")) {
-          throw error;
-        }
-        // Map API errors
-        if (
-          error.message.includes("401") ||
-          error.message.includes("credentials")
-        ) {
-          throw new Error("GOOGLE_SIGNIN_INVALID_TOKEN");
-        }
-      }
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const signup = async (email: string, password: string, fullName: string) => {
     setIsLoading(true);
     try {
@@ -250,6 +158,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("refreshToken");
   };
 
+  const setUserState = (nextUser: User | null) => {
+    setUser(nextUser);
+    if (nextUser) {
+      localStorage.setItem("user", JSON.stringify(nextUser));
+    } else {
+      localStorage.removeItem("user");
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -257,10 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         signup,
-        loginWithGoogle,
         logout,
         isAuthenticated: !!user,
-        setUserState: setUser,
+        setUserState,
       }}
     >
       {children}

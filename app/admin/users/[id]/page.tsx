@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { usersService, type UserManagementResponse } from "@/lib/services/users.service"
+import { authService } from "@/lib/services/auth.service"
 import { cn } from "@/lib/utils"
 
 export default function UserDetailPage() {
@@ -18,6 +19,7 @@ export default function UserDetailPage() {
 
   const [user, setUser] = useState<UserManagementResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSendingVerification, setIsSendingVerification] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -76,6 +78,21 @@ export default function UserDetailPage() {
         return <Badge variant="secondary" className="flex items-center gap-1"><XCircle className="w-3 h-3" />Không hoạt động</Badge>
       default:
         return <Badge variant="default" className="bg-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Hoạt động</Badge>
+    }
+  }
+
+  const handleSendVerificationEmail = async () => {
+    if (!user?.email || user.isEmailVerified) return
+
+    try {
+      setIsSendingVerification(true)
+      await authService.verifyEmail(user.email)
+      toast.success(`Đã gửi email xác thực tới ${user.email}`)
+    } catch (err) {
+      console.error("Error sending verification email:", err)
+      toast.error("Không thể gửi email xác thực")
+    } finally {
+      setIsSendingVerification(false)
     }
   }
 
@@ -327,7 +344,15 @@ export default function UserDetailPage() {
                   {user.isEmailVerified ? (
                     <Badge className="bg-green-100 text-green-700 border-green-200">Đã xác thực</Badge>
                   ) : (
-                    <Badge variant="secondary">Chưa xác thực</Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSendVerificationEmail}
+                      disabled={isSendingVerification}
+                    >
+                      {isSendingVerification ? "Đang gửi..." : "Gửi mail xác thực"}
+                    </Button>
                   )}
                 </div>
                 <div className="flex justify-between py-2 border-b">

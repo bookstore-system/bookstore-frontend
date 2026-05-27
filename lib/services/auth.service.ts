@@ -34,10 +34,6 @@ export interface AuthResponse {
   };
 }
 
-export interface GoogleAuthRequest {
-  credential: string;
-}
-
 export const authService = {
   /**
    * Login with email/username and password
@@ -60,14 +56,6 @@ export const authService = {
    */
   async signup(data: SignupRequest): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>("/auth/register", data);
-    return response;
-  },
-
-  /**
-   * Login with Google OAuth
-   */
-  async loginWithGoogle(data: GoogleAuthRequest): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>("/auth/google", data);
     return response;
   },
 

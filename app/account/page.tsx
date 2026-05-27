@@ -22,6 +22,7 @@ interface UserProfile {
   phoneNumber?: string | null;
   role: string;
   isEmailVerified?: boolean;
+  emailVerified?: boolean;
   avatarUrl?: string;
   dateOfBirth?: string | null;
   gender?: string | null;
@@ -29,6 +30,22 @@ interface UserProfile {
   membershipTier?: string;
   points?: number;
 }
+
+function formatVietnamDateTime(value?: string | null) {
+  if (!value) return "";
+  const normalizedValue = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}Z`;
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(normalizedValue));
+}
+
 import { WishlistSection } from "@/components/account/wishlist-section";
 import { addressService, type Address } from "@/lib/services";
 import { AddressSelectModal } from "@/components/products/address-select-modal";
@@ -65,12 +82,13 @@ export default function AccountPage() {
       setLoadingProfile(true);
       const profile = await usersService.getMyProfile();
       setUserProfile(profile as UserProfile);
+      const isEmailVerified = profile.isEmailVerified ?? profile.emailVerified ?? false;
 
       // Update AuthContext with latest user info including avatarUrl
       const updatedUser = {
         ...user,
         avatar: profile.avatar || profile.avatarUrl || user.avatar,
-        emailVerified: profile.emailVerified ?? user.isEmailVerified,
+        isEmailVerified,
         fullName: profile.fullName || user.fullName,
         phone: profile.phoneNumber || user.phone,
         username: profile.username || user.username,
@@ -83,14 +101,15 @@ export default function AccountPage() {
       if (
         updatedUser.avatar !== user.avatar ||
         updatedUser.fullName !== user.fullName ||
-        updatedUser.phone !== user.phone
+        updatedUser.phone !== user.phone ||
+        updatedUser.isEmailVerified !== user.isEmailVerified
       ) {
         setUserState(updatedUser);
         // Update localStorage with new info
         localStorage.setItem("user", JSON.stringify(updatedUser)); // Or handle by auth context
       }
 
-      // setLocalEmailVerified(profile.emailVerified || false);
+      setLocalEmailVerified(isEmailVerified);
     } catch (error) {
       console.error("Failed to fetch user profile:", error);
     } finally {
@@ -105,6 +124,24 @@ export default function AccountPage() {
     }
   }, [user?.id, hasFetchedProfile]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        fetchUserProfile();
+      }
+    };
+
+    window.addEventListener("focus", fetchUserProfile);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener("focus", fetchUserProfile);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [user?.id, user?.isEmailVerified]);
+
   // Refresh user from localStorage on mount AND when emailVerified event fires
 
   useEffect(() => {
@@ -115,10 +152,10 @@ export default function AccountPage() {
         if (storedUser) {
           try {
             const freshUser = JSON.parse(storedUser);
-            const isNowVerified = freshUser.isEmailVerified === true;
+            const isNowVerified = freshUser.isEmailVerified === true || freshUser.emailVerified === true;
             setLocalEmailVerified(isNowVerified);
-            if (freshUser.isEmailVerified !== user.isEmailVerified) {
-              setUserState(freshUser);
+            if (isNowVerified !== user.isEmailVerified) {
+              setUserState({ ...freshUser, isEmailVerified: isNowVerified });
             }
           } catch (err) {
             console.error("Failed to refresh user from localStorage:", err);
@@ -138,13 +175,13 @@ export default function AccountPage() {
         if (storedUser) {
           try {
             const freshUser = JSON.parse(storedUser);
-            const isNowVerified = freshUser.isEmailVerified === true;
+            const isNowVerified = freshUser.isEmailVerified === true || freshUser.emailVerified === true;
 
             setLocalEmailVerified(isNowVerified);
 
             // Update context if isEmailVerified changed
-            if (freshUser.isEmailVerified !== user.isEmailVerified) {
-              setUserState(freshUser);
+            if (isNowVerified !== user.isEmailVerified) {
+              setUserState({ ...freshUser, isEmailVerified: isNowVerified });
             }
           } catch (err) {
             console.error("Failed to refresh user from localStorage:", err);
@@ -544,7 +581,7 @@ export default function AccountPage() {
                             Lần đăng nhập cuối
                           </label>
                           <p className="text-foreground font-medium">
-                            {new Date(userProfile.lastLogin).toLocaleString("vi-VN")}
+                            {formatVietnamDateTime(userProfile.lastLogin)}
                           </p>
                         </div>
                       )}

@@ -46,10 +46,8 @@ export function EmailVerification({
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
-        if (user.emailVerified === true) {
+        if (user.isEmailVerified === true || user.emailVerified === true) {
           message.warning("Email của bạn đã được xác thực rồi!");
-          // Force page reload to update UI
-          window.location.reload();
           return;
         }
       } catch (err) {

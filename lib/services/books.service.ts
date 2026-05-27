@@ -177,10 +177,17 @@ export const booksService = {
     keyword: string,
     filters?: Omit<BookFilters, "keyword">
   ): Promise<PaginatedResponse<Book>> {
-    return apiClient.get<PaginatedResponse<Book>>("/books/search", {
-      keyword: keyword,
-      ...filters,
-    });
+    // Normalize paging params: backend expects `page` and `pageSize`.
+    const params: any = { keyword };
+    if (filters) {
+      // Explicitly map `size` -> `pageSize` and preserve `page` if provided
+      const { page, size, ...rest } = filters as any;
+      if (page !== undefined) params.page = page;
+      if (size !== undefined) params.pageSize = size;
+      Object.assign(params, rest);
+    }
+
+    return apiClient.get<PaginatedResponse<Book>>("/books/search", params);
   },
 
   /**
