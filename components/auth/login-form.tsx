@@ -18,7 +18,7 @@ function LoginFormContent({ variant = "user" }: { variant?: LoginFormVariant }) 
   const [formData, setFormData] = useState({ username: "", password: "" })
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const { login, isLoading } = useAuth()
+  const { login, isLoading, logout } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect")
@@ -37,6 +37,19 @@ function LoginFormContent({ variant = "user" }: { variant?: LoginFormVariant }) 
       const isAdmin =
         typeof authenticatedUser.role === "string" &&
         authenticatedUser.role.toUpperCase() === "ADMIN"
+
+      // If this is a user login form but the account is an admin account,
+      // treat it like a generic failure so the message matches the public login page.
+      if (!isAdminLogin && isAdmin) {
+        // Clear any stored auth state because admin should not be logged in via public form
+        try {
+          logout()
+        } catch (e) {
+          // ignore logout errors
+        }
+        setError("Đăng nhập thất bại. Vui lòng thử lại.")
+        return
+      }
 
       if (isAdminLogin && !isAdmin) {
         setError("Tài khoản không có quyền truy cập khu vực quản trị.")
