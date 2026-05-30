@@ -6,10 +6,25 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { toast } from "sonner"
+import { useCart } from "@/lib/cart-context"
+
+function isSuccessfulPayment(resultCode: string | null, status: string | null) {
+	const normalizedResultCode = resultCode?.trim()
+	const normalizedStatus = status?.trim().toUpperCase()
+
+	return (
+		normalizedResultCode === "0" ||
+		normalizedResultCode === "00" ||
+		normalizedStatus === "COMPLETED" ||
+		normalizedStatus === "SUCCESS" ||
+		normalizedStatus === "PAID"
+	)
+}
 
 function ZaloPayReturnContent() {
 	const searchParams = useSearchParams()
 	const router = useRouter()
+	const { loadCart } = useCart()
 	const [status, setStatus] = useState<"processing" | "success" | "error">("processing")
 	const [message, setMessage] = useState("Đang xử lý kết quả thanh toán...")
 	const [orderId, setOrderId] = useState<string | null>(null)
@@ -24,24 +39,28 @@ function ZaloPayReturnContent() {
 			setOrderId(returnedOrderId)
 		}
 
-		const isSuccess =
-			resultCode === "00" || resultCode === "0" || statusParam === "COMPLETED"
+		const isSuccess = isSuccessfulPayment(resultCode, statusParam)
 
-		if (isSuccess && returnedOrderId) {
+		if (isSuccess) {
 			setStatus("success")
 			setMessage(decodeURIComponent(messageParam || "Thanh toán thành công"))
 			toast.success("Thanh toán thành công")
+			loadCart()
 
-			const redirectTimer = setTimeout(() => {
-				router.push(`/account/orders/${returnedOrderId}`)
-			}, 2500)
+			if (returnedOrderId) {
+				const redirectTimer = setTimeout(() => {
+					router.push(`/account/orders/${returnedOrderId}`)
+				}, 2500)
 
-			return () => clearTimeout(redirectTimer)
+				return () => clearTimeout(redirectTimer)
+			}
+
+			return
 		}
 
 		setStatus("error")
 		setMessage(decodeURIComponent(messageParam || "Thanh toán thất bại"))
-	}, [router, searchParams])
+	}, [loadCart, router, searchParams])
 
 	const statusConfig = {
 		processing: {
@@ -63,6 +82,11 @@ function ZaloPayReturnContent() {
 			subtitle: "Đơn hàng chưa được thanh toán. Bạn có thể thử lại hoặc quay về trang chủ.",
 		},
 	}[status]
+
+	const subtitle =
+		status === "success" && !orderId
+			? "Giao dịch đã được xác nhận. Bạn có thể quay về trang chủ hoặc xem đơn hàng trong tài khoản."
+			: statusConfig.subtitle
 
 	return (
 		<div className="relative min-h-[70vh] overflow-hidden bg-gradient-to-b from-background via-muted/20 to-background px-4 py-10 sm:px-6 lg:px-8">
@@ -100,7 +124,7 @@ function ZaloPayReturnContent() {
 							</div>
 						)}
 
-						<p className="text-sm text-muted-foreground">{statusConfig.subtitle}</p>
+						<p className="text-sm text-muted-foreground">{subtitle}</p>
 					</div>
 
 					<div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -108,6 +132,19 @@ function ZaloPayReturnContent() {
 							<Link href={`/account/orders/${orderId}`} className="w-full sm:w-auto">
 								<Button className="w-full sm:w-auto">Xem chi tiết đơn hàng</Button>
 							</Link>
+						)}
+
+						{status === "success" && !orderId && (
+							<>
+								<Link href="/account/orders" className="w-full sm:w-auto">
+									<Button variant="outline" className="w-full sm:w-auto">
+										Xem đơn hàng
+									</Button>
+								</Link>
+								<Link href="/" className="w-full sm:w-auto">
+									<Button className="w-full sm:w-auto">Về trang chủ</Button>
+								</Link>
+							</>
 						)}
 
 						{status === "error" && (

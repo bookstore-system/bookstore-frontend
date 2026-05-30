@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
 import { cartService, type Cart, type AddToCartResponse, type UpdateCartResponse, type RemoveCartResponse } from "@/lib/services/cart.service"
 import { useAuth } from "./auth-context"
 import { useToast } from "@/components/ui/use-toast"
@@ -37,18 +37,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Load cart when user authenticates
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadCart()
-    } else {
-      setCart(null)
-      setItemCount(0)
-      setSelectedItems([])
-    }
-  }, [isAuthenticated])
-
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
     if (!isAuthenticated) return
 
     try {
@@ -66,7 +55,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isAuthenticated])
+
+  // Reload cart when auth state or route changes so payment/order redirects do not leave stale counts.
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadCart()
+    } else {
+      setCart(null)
+      setItemCount(0)
+      setSelectedItems([])
+    }
+  }, [isAuthenticated, loadCart, pathname])
 
   const toggleItemSelection = (bookId: string) => {
     setSelectedItems(prev => {
