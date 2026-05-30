@@ -7,6 +7,19 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { toast } from "sonner"
 
+function isSuccessfulPayment(resultCode: string | null, status: string | null) {
+	const normalizedResultCode = resultCode?.trim()
+	const normalizedStatus = status?.trim().toUpperCase()
+
+	return (
+		normalizedResultCode === "0" ||
+		normalizedResultCode === "00" ||
+		normalizedStatus === "COMPLETED" ||
+		normalizedStatus === "SUCCESS" ||
+		normalizedStatus === "PAID"
+	)
+}
+
 function ZaloPayReturnContent() {
 	const searchParams = useSearchParams()
 	const router = useRouter()
@@ -24,8 +37,7 @@ function ZaloPayReturnContent() {
 			setOrderId(returnedOrderId)
 		}
 
-		const isSuccess =
-			resultCode === "00" || resultCode === "0" || statusParam === "COMPLETED"
+		const isSuccess = isSuccessfulPayment(resultCode, statusParam)
 
 		if (isSuccess) {
 			setStatus("success")
