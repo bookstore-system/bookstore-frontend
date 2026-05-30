@@ -6,10 +6,12 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { toast } from "sonner"
+import { useCart } from "@/lib/cart-context"
 
 function MoMoReturnContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { loadCart } = useCart()
     const [status, setStatus] = useState<"processing" | "success" | "error">("processing")
     const [message, setMessage] = useState("Đang xử lý kết quả thanh toán...")
     const [orderId, setOrderId] = useState<string | null>(null)
@@ -31,6 +33,7 @@ function MoMoReturnContent() {
             setStatus("success")
             setMessage(decodeURIComponent(messageParam || "Thanh toán thành công"))
             toast.success("Thanh toán thành công")
+            loadCart()
 
             const redirectTimer = setTimeout(() => {
                 router.push(`/account/orders/${returnedOrderId}`)
@@ -41,7 +44,7 @@ function MoMoReturnContent() {
 
         setStatus("error")
         setMessage(decodeURIComponent(messageParam || "Thanh toán thất bại"))
-    }, [router, searchParams])
+    }, [loadCart, router, searchParams])
 
     const statusConfig = {
         processing: {
