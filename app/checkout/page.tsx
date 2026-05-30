@@ -19,7 +19,7 @@ import { toast } from "sonner"
 import { AddressSelectModal } from "@/components/products/address-select-modal"
 
 export default function CheckoutPage() {
-  const { cart, loading, selectedItems } = useCart()
+  const { cart, loading, selectedItems, loadCart } = useCart()
   const { user } = useAuth()
   const router = useRouter()
 
@@ -242,6 +242,7 @@ export default function CheckoutPage() {
 
       if (paymentMethod === "COD") {
         const order = await ordersService.checkout(checkoutRequest)
+        await loadCart()
         toast.success("Đặt hàng thành công!")
         router.push(`/account/orders/${order.id}`)
       } else if (paymentMethod === "VNPay") {
