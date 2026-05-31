@@ -16,9 +16,9 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nhà Sách Online",
+  title: "Nhà Sách Cộng Đồng",
   description:
-    "Nhà sách online hàng đầu Việt Nam. Mua sách, truyện, tạp chí với giá tốt nhất. Giao hàng nhanh, dịch vụ tốt.",
+    "Nhà Sách Cộng Đồng hàng đầu Việt Nam. Mua sách, truyện, tạp chí với giá tốt nhất. Giao hàng nhanh, dịch vụ tốt.",
   generator: "v0.app",
   icons: {
     icon: [
@@ -31,8 +31,8 @@ export const metadata: Metadata = {
     shortcut: [{ url: "/logo_not_found.png" }],
   },
   openGraph: {
-    title: "Not Found - Nhà Sách Online",
-    description: "Nhà sách online hàng đầu Việt Nam",
+    title: "Not Found - Nhà Sách Cộng Đồng",
+    description: "Nhà Sách Cộng Đồng hàng đầu Việt Nam",
     images: ["/logo_not_found.png"],
   },
 };

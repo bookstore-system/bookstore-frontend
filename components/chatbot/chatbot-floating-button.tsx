@@ -80,7 +80,7 @@ interface Message {
 
 // Thông tin cửa hàng (có thể lấy từ API sau)
 const STORE_INFO = {
-  name: "Nhà Sách Online",
+  name: "Nhà Sách Cộng Đồng",
   phone: "1900-123-456",
   email: "contact@bookstore.vn",
   address: "12 Đường Nguyễn Văn Bảo, Gò Vấp, HCM",
@@ -101,7 +101,7 @@ export function ChatbotFloatingButton() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
-      text: "Xin chào! Tôi là trợ lý AI của Nhà Sách Online. Tôi có thể giúp bạn tìm sách, tư vấn về sản phẩm, hoặc trả lời các câu hỏi về đơn hàng. Bạn cần hỗ trợ gì hôm nay?",
+      text: "Xin chào! Tôi là trợ lý AI của Nhà Sách Cộng Đồng. Tôi có thể giúp bạn tìm sách, tư vấn về sản phẩm, hoặc trả lời các câu hỏi về đơn hàng. Bạn cần hỗ trợ gì hôm nay?",
       isUser: false,
       timestamp: new Date(),
     },
@@ -429,7 +429,7 @@ export function ChatbotFloatingButton() {
           //   setMessages([
           //     {
           //       id: "welcome",
-          //       text: "Xin chào! Tôi là trợ lý AI của Nhà Sách Online. Tôi có thể giúp bạn tìm sách, tư vấn về sản phẩm, hoặc trả lời các câu hỏi về đơn hàng. Bạn cần hỗ trợ gì hôm nay?",
+          //       text: "Xin chào! Tôi là trợ lý AI của Nhà Sách Cộng Đồng. Tôi có thể giúp bạn tìm sách, tư vấn về sản phẩm, hoặc trả lời các câu hỏi về đơn hàng. Bạn cần hỗ trợ gì hôm nay?",
           //       isUser: false,
           //       timestamp: new Date(),
           //     },

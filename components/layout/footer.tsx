@@ -89,7 +89,7 @@ export function Footer() {
           </div>
         </div>
         <div className="border-t border-primary-foreground/20 pt-8 text-center text-sm opacity-75">
-          <p>&copy; 2025 Nhà Sách Online. Tất cả các quyền được bảo lưu.</p>
+          <p>&copy; 2025 Nhà Sách Cộng Đồng. Tất cả các quyền được bảo lưu.</p>
         </div>
       </div>
     </footer>

@@ -46,7 +46,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <Sider collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)} theme="dark">
         <div style={{ height: "64px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <h1 style={{ color: "white", margin: 0, fontSize: collapsed ? "12px" : "18px" }}>
-            {collapsed ? "📚" : "Nhà Sách Online"}
+            {collapsed ? "📚" : "Nhà Sách Cộng Đồng"}
           </h1>
         </div>
         <Menu theme="dark" defaultSelectedKeys={["1"]} mode="inline">
