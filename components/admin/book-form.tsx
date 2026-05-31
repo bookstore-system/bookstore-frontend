@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -30,7 +30,7 @@ import { MultiSelect } from "@/components/ui/multi-select"
 import { useRouter } from "next/navigation"
 import { QuickAuthorDialog } from "./quick-author-dialog"
 import { QuickCategoryDialog } from "./quick-category-dialog"
-import { Plus } from "lucide-react"
+import { Plus, X } from "lucide-react"
 
 // Schema
 // Schema
@@ -70,9 +70,11 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
     const [categories, setCategories] = useState<{ id: string, name: string }[]>([])
     const [authors, setAuthors] = useState<{ id: string, name: string }[]>([])
     const [selectedImages, setSelectedImages] = useState<File[]>([])
+    const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([])
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [quickAuthorOpen, setQuickAuthorOpen] = useState(false)
     const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
+    const imageInputRef = useRef<HTMLInputElement | null>(null)
 
     const form = useForm<BookFormValues>({
         resolver: zodResolver(bookFormSchema),
@@ -138,6 +140,15 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
         setSelectedImages([])
     }, [book, form])
 
+    useEffect(() => {
+        const urls = selectedImages.map((image) => URL.createObjectURL(image))
+        setImagePreviewUrls(urls)
+
+        return () => {
+            urls.forEach((url) => URL.revokeObjectURL(url))
+        }
+    }, [selectedImages])
+
     const handleSubmit = async (values: BookFormValues) => {
         try {
             // Validate Images for New Books
@@ -176,7 +187,15 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setSelectedImages(Array.from(e.target.files))
+            setSelectedImages((prev) => [...prev, ...Array.from(e.target.files ?? [])])
+            e.target.value = ""
+        }
+    }
+
+    const handleRemoveImage = (indexToRemove: number) => {
+        setSelectedImages((prev) => prev.filter((_, index) => index !== indexToRemove))
+        if (imageInputRef.current) {
+            imageInputRef.current.value = ""
         }
     }
 
@@ -422,6 +441,7 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
                     <FormLabel>Hình ảnh</FormLabel>
                     <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-accent/50 transition-colors">
                         <Input
+                            ref={imageInputRef}
                             type="file"
                             multiple
                             accept="image/*"
@@ -435,8 +455,44 @@ export function BookForm({ book, onSubmit, onCancel }: BookFormProps) {
                         </label>
                     </div>
                     {selectedImages.length > 0 && (
-                        <div className="text-sm text-green-600 font-medium">
-                            Đã chọn {selectedImages.length} ảnh
+                        <div className="space-y-3">
+                            <div className="text-sm text-green-600 font-medium">
+                                Đã chọn {selectedImages.length} ảnh. Thứ tự hiển thị bên dưới cũng là thứ tự ảnh được gửi khi lưu.
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                {selectedImages.map((image, index) => (
+                                    <div key={`${image.name}-${image.lastModified}-${index}`} className="group relative overflow-hidden rounded-lg border bg-muted">
+                                        <div className="aspect-[3/4] w-full overflow-hidden bg-muted">
+                                            <img
+                                                src={imagePreviewUrls[index]}
+                                                alt={`Ảnh ${index + 1}: ${image.name}`}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        </div>
+                                        <div className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold shadow-sm">
+                                            #{index + 1}
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute right-2 top-2 h-7 w-7 opacity-95 shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                                            onClick={() => handleRemoveImage(index)}
+                                            aria-label={`Bỏ chọn ảnh ${index + 1}`}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                        <div className="space-y-0.5 bg-background/95 p-2">
+                                            <p className="truncate text-xs font-medium" title={image.name}>
+                                                {image.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {(image.size / 1024 / 1024).toFixed(2)} MB
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
