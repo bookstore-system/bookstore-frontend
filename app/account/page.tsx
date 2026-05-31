@@ -410,7 +410,7 @@ export default function AccountPage() {
                     </div>
                   )}
                   <h2 className="font-bold text-foreground">
-                    {userProfile?.fullName || user.fullName || "Khách hàng BookSphere"}
+                    {userProfile?.fullName || user.fullName || "Khách hàng Nhà Sách Cộng Đồng"}
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {userProfile?.email || user.email || "Không có email"}
