@@ -14,7 +14,7 @@ export default function AdminLoginPage() {
             <div className="mb-8">
               <h1 className="mb-2 text-3xl font-bold text-foreground">Đăng nhập quản trị</h1>
               <p className="text-muted-foreground">
-                Đăng nhập vào khu vực quản trị Nhà Sách Online
+                Đăng nhập vào khu vực quản trị Nhà Sách Cộng Đồng
               </p>
             </div>
 
