@@ -15,7 +15,7 @@ export default function LoginPage() {
           <div className="bg-card/95 backdrop-blur-sm rounded-lg border border-border p-8 shadow-2xl">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-foreground mb-2">Đăng nhập</h1>
-              <p className="text-muted-foreground">Đăng nhập vào tài khoản Nhà Sách Online</p>
+              <p className="text-muted-foreground">Đăng nhập vào tài khoản Nhà Sách Cộng Đồng</p>
             </div>
 
             <LoginForm />

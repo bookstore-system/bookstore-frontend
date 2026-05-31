@@ -9,12 +9,14 @@ import { apiClient } from "../api-client"
 export interface BookCategoryOption {
   id: string
   name: string
+  parentCategoryId?: string | null
 }
 
 /** Khớp AdminCreateCategoryRequest (book-service) */
 export interface AdminCreateCategoryBody {
   name: string
   description?: string
+  parentCategoryId?: string
 }
 
 export const bookCategoriesService = {

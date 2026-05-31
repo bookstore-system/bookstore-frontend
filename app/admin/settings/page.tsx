@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
-    storeName: "Nhà Sách Online",
+    storeName: "Nhà Sách Cộng Đồng",
     email: "contact@bookstore.vn",
     phone: "1900-123-456",
     address: "12 Nguyễn Văn Bảo, Hồ Chí Minh",

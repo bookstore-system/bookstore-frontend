@@ -342,7 +342,7 @@ class ReportExportService {
   </div>
 
   <div class="footer">
-    <p>Báo cáo được tạo tự động bởi hệ thống AI - Nhà Sách Online</p>
+    <p>Báo cáo được tạo tự động bởi hệ thống AI - Nhà Sách Cộng Đồng</p>
     <p>Ngày tạo: ${data.generatedAt.toLocaleString("vi-VN")}</p>
   </div>
 </body>

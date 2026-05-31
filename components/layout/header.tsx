@@ -39,7 +39,7 @@ export function Header() {
                 className="h-12 w-12 object-contain"
               />
               <span className="hidden text-lg font-semibold text-foreground sm:inline md:text-xl">
-                Nhà Sách Online
+                Nhà Sách Cộng Đồng
               </span>
             </Link>
 

@@ -23,12 +23,17 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { bookCategoriesService, BookCategoryOption } from "@/lib/services/book-categories.service"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { bookCategoriesService } from "@/lib/services/book-categories.service"
+import type { BookCategoryOption } from "@/lib/services/book-categories.service"
 import { useToast } from "@/components/ui/use-toast"
+
+const NO_PARENT_VALUE = "none"
 
 const categorySchema = z.object({
   name: z.string().min(1, "Nhập tên thể loại").max(255, "Tối đa 255 ký tự"),
   description: z.string().max(10000, "Mô tả quá dài").optional(),
+  parentCategoryId: z.string().optional(),
 })
 
 type CategoryFormValues = z.infer<typeof categorySchema>
@@ -42,20 +47,47 @@ interface QuickCategoryDialogProps {
 export function QuickCategoryDialog({ open, onOpenChange, onSuccess }: QuickCategoryDialogProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
+  const [categories, setCategories] = useState<BookCategoryOption[]>([])
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: "",
       description: "",
+      parentCategoryId: NO_PARENT_VALUE,
     },
   })
 
   useEffect(() => {
     if (!open) {
-      form.reset({ name: "", description: "" })
+      form.reset({ name: "", description: "", parentCategoryId: NO_PARENT_VALUE })
     }
   }, [open, form])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const loadCategories = async () => {
+      try {
+        setIsLoadingCategories(true)
+        setCategories(await bookCategoriesService.list())
+      } catch (error) {
+        console.error("Failed to load parent categories", error)
+        toast({
+          variant: "destructive",
+          title: "Lỗi",
+          description: "Không thể tải danh sách thể loại cha",
+        })
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    loadCategories()
+  }, [open, toast])
 
   const handleSubmit = async (values: CategoryFormValues) => {
     try {
@@ -63,6 +95,10 @@ export function QuickCategoryDialog({ open, onOpenChange, onSuccess }: QuickCate
       const created = await bookCategoriesService.create({
         name: values.name.trim(),
         description: values.description?.trim() || undefined,
+        parentCategoryId:
+          values.parentCategoryId && values.parentCategoryId !== NO_PARENT_VALUE
+            ? values.parentCategoryId
+            : undefined,
       })
       toast({
         title: "Thành công",
@@ -120,12 +156,41 @@ export function QuickCategoryDialog({ open, onOpenChange, onSuccess }: QuickCate
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="parentCategoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Thể loại cha</FormLabel>
+                  <Select
+                    value={field.value || NO_PARENT_VALUE}
+                    onValueChange={field.onChange}
+                    disabled={isLoadingCategories}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={isLoadingCategories ? "Đang tải..." : "Không có thể loại cha"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={NO_PARENT_VALUE}>Không có thể loại cha</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Đang lưu…" : "Lưu"}
+                {isSubmitting ? "Đang lưu..." : "Lưu"}
               </Button>
             </DialogFooter>
           </form>
