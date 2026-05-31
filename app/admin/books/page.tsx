@@ -96,7 +96,7 @@ export default function AdminBooksPage() {
           gap="md"
         >
           {loading ? (
-            <div className="flex justify-center p-8">Loading...</div> // Or use a Spinner component
+            <div className="flex justify-center p-8">Loading...</div>
           ) : (
             <BooksTable
               books={books}
