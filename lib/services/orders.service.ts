@@ -72,8 +72,15 @@ export interface CheckoutRequest {
   note?: string
   discountCode?: string
   bookIds?: string[] // If null/empty -> checkout all cart
+  priceSnapshotItems?: PriceSnapshotItem[]
   shippingFee?: number
   redirectUrl?: string // URL to redirect back after payment
+}
+
+export interface PriceSnapshotItem {
+  bookId: string
+  quantity: number
+  unitPrice: number
 }
 
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED"
