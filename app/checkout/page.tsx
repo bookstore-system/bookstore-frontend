@@ -12,11 +12,41 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { MapPin, CreditCard, Loader2, Plus, Edit2, Trash2, CheckCircle2, Ticket } from "lucide-react"
 import { addressService, AddressResponse } from "@/lib/services/address.service"
-import { ordersService, CheckoutRequest } from "@/lib/services/orders.service"
+import { ordersService, type CheckoutRequest, type PriceSnapshotItem } from "@/lib/services/orders.service"
+import { cartService, type CartItem } from "@/lib/services/cart.service"
 import { shipmentService, CalculateShippingResponse } from "@/lib/services/shipment.service"
 import { promotionsService } from "@/lib/services/promotions.service"
 import { toast } from "sonner"
 import { AddressSelectModal } from "@/components/products/address-select-modal"
+
+const PRICE_CHANGED_MESSAGE = "Giá đã thay đổi. Vui lòng kiểm tra lại giỏ hàng."
+
+function getEffectiveCartItemPrice(item: CartItem): number {
+  return Number(item.bookDiscountPrice ?? item.bookPrice ?? 0)
+}
+
+function buildPriceSnapshotItems(items: CartItem[]): PriceSnapshotItem[] {
+  return items.map(item => ({
+    bookId: item.bookId,
+    quantity: item.quantity,
+    unitPrice: getEffectiveCartItemPrice(item),
+  }))
+}
+
+function hasSelectedCheckoutItemsChanged(currentItems: CartItem[], latestItems: CartItem[]): boolean {
+  if (currentItems.length !== latestItems.length) {
+    return true
+  }
+
+  const latestByBookId = new Map(latestItems.map(item => [item.bookId, item]))
+  return currentItems.some(item => {
+    const latest = latestByBookId.get(item.bookId)
+    if (!latest || latest.quantity !== item.quantity) {
+      return true
+    }
+    return Math.abs(getEffectiveCartItemPrice(latest) - getEffectiveCartItemPrice(item)) > 0.01
+  })
+}
 
 export default function CheckoutPage() {
   const { cart, loading, selectedItems, loadCart } = useCart()
@@ -51,7 +81,7 @@ export default function CheckoutPage() {
 
   // Items to checkout (filtered by selection)
   const items = cart?.items?.filter(item => selectedItems.includes(item.bookId)) || []
-  const subtotal = items.reduce((sum, item) => sum + ((item.bookDiscountPrice ?? item.bookPrice) * item.quantity), 0)
+  const subtotal = items.reduce((sum, item) => sum + (getEffectiveCartItemPrice(item) * item.quantity), 0)
   const total = Math.max(0, subtotal + shippingFee - discountAmount)
 
   // Fetch addresses on mount
@@ -61,7 +91,7 @@ export default function CheckoutPage() {
     }
   }, [user])
 
-  // Calculate shipping when address changes
+  // Calculate shipping when address or selected item prices change
   useEffect(() => {
     if (selectedAddressId && addresses.length > 0) {
       const selectedAddress = addresses.find(addr => addr.id === selectedAddressId)
@@ -72,7 +102,7 @@ export default function CheckoutPage() {
       setShippingFee(0)
       setShippingInfo(null)
     }
-  }, [selectedAddressId, addresses])
+  }, [selectedAddressId, addresses, subtotal, items.length])
 
   // Redirect if cart/selection IS EMPTY
   useEffect(() => {
@@ -98,7 +128,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const calculateShipping = async (address: AddressResponse) => {
+  const calculateShipping = async (address: AddressResponse, checkoutItems: CartItem[] = items) => {
     try {
       setIsCalculatingShipping(true)
       // Call shipment service
@@ -106,8 +136,8 @@ export default function CheckoutPage() {
         address.districtId,
         address.wardCode,
         {
-          totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-          subtotal: items.reduce((sum, item) => sum + ((item.bookDiscountPrice ?? item.bookPrice) * item.quantity), 0)
+          totalItems: checkoutItems.reduce((sum, item) => sum + item.quantity, 0),
+          subtotal: checkoutItems.reduce((sum, item) => sum + (getEffectiveCartItemPrice(item) * item.quantity), 0)
         }
       )
       setShippingInfo(response)
@@ -213,6 +243,16 @@ export default function CheckoutPage() {
     setIsSubmitting(true)
 
     try {
+      const latestCart = await cartService.getCart()
+      const latestItems = latestCart.items?.filter(item => selectedItems.includes(item.bookId)) || []
+
+      if (hasSelectedCheckoutItemsChanged(items, latestItems)) {
+        handleClearDiscount()
+        toast.error(PRICE_CHANGED_MESSAGE)
+        await loadCart()
+        return
+      }
+
       const origin = typeof window !== "undefined" && window.location.origin ? window.location.origin : "http://localhost:3000"
 
       const getPaymentReturnUrl = (method: string) => {
@@ -232,7 +272,8 @@ export default function CheckoutPage() {
         addressId: selectedAddressId,
         paymentMethod: paymentMethod,
         note: "",
-        bookIds: items.flatMap(item => Array.from({ length: item.quantity }, () => item.bookId)),
+        bookIds: latestItems.flatMap(item => Array.from({ length: item.quantity }, () => item.bookId)),
+        priceSnapshotItems: buildPriceSnapshotItems(latestItems),
         shippingFee,
         redirectUrl: getPaymentReturnUrl(paymentMethod),
         discountCode: appliedCode || undefined
